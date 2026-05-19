@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FitzHugh-Nagumo Neuronal Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- LaTeX equations styling via MathJax -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    ></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .glow-cyan {
+        box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+      }
+      .glow-amber {
+        box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+      }
+      /* Simple custom scrollbar for explanation panels */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased"
+  >
+    <!-- Header -->
+    <header
+      class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40 px-6 py-4"
+    >
+      <div
+        class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="p-2.5 bg-cyan-950/50 border border-cyan-500/30 rounded-xl text-cyan-400"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/ajax/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-activity"
+            >
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          <div>
+            <h1
+              class="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-indigo-400 to-amber-400 bg-clip-text text-transparent"
+            >
+              FitzHugh-Nagumo Neuronal Simulator
+            </h1>
+            <p class="text-xs text-slate-400">
+              Interactive 2D Phase Portrait & Temporal Excitation Explorer
+            </p>
+          </div>
+        </div>
+
+        <!-- Top Quick Equation View -->
+        <div
+          class="flex items-center gap-4 bg-slate-950/50 px-4 py-2 border border-slate-800 rounded-xl text-xs sm:text-sm mono"
+        >
+          <div class="flex flex-col items-center">
+            <span
+              class="text-[10px] text-slate-500 font-bold tracking-wider uppercase"
+              >Fast Voltage Variable</span
+            >
+            <span class="text-cyan-400"
+              >$$\frac{dV}{dt} = V - \frac{V^3}{3} - w + I_{\text{ext}}$$</span
+            >
+          </div>
+          <div class="w-[1px] h-8 bg-slate-800"></div>
+          <div class="flex flex-col items-center">
+            <span
+              class="text-[10px] text-slate-500 font-bold tracking-wider uppercase"
+              >Slow Recovery Variable</span
+            >
+            <span class="text-amber-400"
+              >$$\frac{dw}{dt} = \varepsilon(V + a - bw)$$</span
+            >
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main
+      class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6"
+    >
+      <!-- Left Sidebar: Controls & Live Analysis (Col-span 4) -->
+      <div class="lg:col-span-4 flex flex-col gap-6">
+        <!-- Presets Card -->
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur"
+        >
+          <div class="flex items-center gap-2 mb-4 text-slate-300">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="text-cyan-400"
+            >
+              <path
+                d="m12 3-1.912 5.886H3.82l4.918 3.573L6.826 19 12 15.427 17.174 19l-1.912-5.741 4.918-3.573h-6.268Z"
+              />
+            </svg>
+            <h2 class="font-semibold text-sm tracking-wide uppercase">
+              Biological Presets
+            </h2>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              id="preset-excitable"
+              class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-850 border border-slate-700 hover:border-cyan-500/50 hover:bg-slate-800 transition text-left flex flex-col justify-between"
+            >
+              <span class="text-slate-200">Excitable Rest</span>
+              <span class="text-[10px] text-slate-400 font-normal"
+                >Quiescent, reacts to stimulus</span
+              >
+            </button>
+            <button
+              id="preset-spiking"
+              class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-850 border border-slate-700 hover:border-amber-500/50 hover:bg-slate-800 transition text-left flex flex-col justify-between"
+            >
+              <span class="text-slate-200">Tonic Spiking</span>
+              <span class="text-[10px] text-slate-400 font-normal"
+                >Continuous neural firing</span
+              >
+            </button>
+            <button
+              id="preset-damped"
+              class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-850 border border-slate-700 hover:border-indigo-500/50 hover:bg-slate-800 transition text-left flex flex-col justify-between"
+            >
+              <span class="text-slate-200">Damped Oscillations</span>
+              <span class="text-[10px] text-slate-400 font-normal"
+                >Slow spiraling to rest</span
+              >
+            </button>
+            <button
+              id="preset-bistable"
+              class="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-850 border border-slate-700 hover:border-emerald-500/50 hover:bg-slate-800 transition text-left flex flex-col justify-between"
+            >
+              <span class="text-slate-200">Bistability</span>
+              <span class="text-[10px] text-slate-400 font-normal"
+                >Multiple equilibrium points</span
+              >
+            </button>
+          </div>
+        </div>
+
+        <!-- Parameter Sliders Card -->
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur flex-1"
+        >
+          <div class="flex items-center gap-2 mb-6 text-slate-300">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="text-cyan-400"
+            >
+              <path
+                d="M20 7h-9M14 17H5M5 7h2M19 17h2M9 12h10M5 12h1M15 7v4M15 11h-2M13 5h4M9 15v4M9 19H7M7 15h4"
+              />
+            </svg>
+            <h2 class="font-semibold text-sm tracking-wide uppercase">
+              Parameters
+            </h2>
+          </div>
+
+          <div class="space-y-5">
+            <!-- Slider I_ext -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <span
+                  class="font-medium text-slate-300 flex items-center gap-1"
+                >
+                  <span>External Injected Current</span>
+                  <span class="mono text-emerald-400 text-[11px] font-semibold"
+                    >I_ext</span
+                  >
+                </span>
+                <span
+                  id="val-I_ext"
+                  class="mono text-slate-400 font-bold bg-slate-950 px-2 py-0.5 rounded"
+                  >0.00</span
+                >
+              </div>
+              <input
+                id="slider-I_ext"
+                type="range"
+                min="-1.5"
+                max="2.0"
+                step="0.01"
+                value="0.00"
+                class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>-1.5 (Inhibitory)</span>
+                <span>2.0 (High Stimulus)</span>
+              </div>
+            </div>
+
+            <!-- Slider Epsilon -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <span
+                  class="font-medium text-slate-300 flex items-center gap-1"
+                >
+                  <span>Timescale Factor</span>
+                  <span class="mono text-cyan-400 text-[11px] font-semibold"
+                    >&epsilon;</span
+                  >
+                </span>
+                <span
+                  id="val-epsilon"
+                  class="mono text-slate-400 font-bold bg-slate-950 px-2 py-0.5 rounded"
+                  >0.08</span
+                >
+              </div>
+              <input
+                id="slider-epsilon"
+                type="range"
+                min="0.01"
+                max="0.5"
+                step="0.005"
+                value="0.08"
+                class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>0.01 (Very Slow Recovery)</span>
+                <span>0.5 (Fast Recovery)</span>
+              </div>
+            </div>
+
+            <!-- Slider a -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <span
+                  class="font-medium text-slate-300 flex items-center gap-1"
+                >
+                  <span>Linear Threshold Shift</span>
+                  <span class="mono text-indigo-400 text-[11px] font-semibold"
+                    >a</span
+                  >
+                </span>
+                <span
+                  id="val-a"
+                  class="mono text-slate-400 font-bold bg-slate-950 px-2 py-0.5 rounded"
+                  >0.70</span
+                >
+              </div>
+              <input
+                id="slider-a"
+                type="range"
+                min="-1.5"
+                max="1.5"
+                step="0.01"
+                value="0.70"
+                class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            <!-- Slider b -->
+            <div class="space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <span
+                  class="font-medium text-slate-300 flex items-center gap-1"
+                >
+                  <span>Feedback Slope</span>
+                  <span class="mono text-indigo-400 text-[11px] font-semibold"
+                    >b</span
+                  >
+                </span>
+                <span
+                  id="val-b"
+                  class="mono text-slate-400 font-bold bg-slate-950 px-2 py-0.5 rounded"
+                  >0.80</span
+                >
+              </div>
+              <input
+                id="slider-b"
+                type="range"
+                min="0.0"
+                max="2.5"
+                step="0.01"
+                value="0.80"
+                class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            <hr class="border-slate-800 my-4" />
+
+            <!-- Time Step Settings -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1.5">
+                <label class="text-xs text-slate-400">Integration \(dt\)</label>
+                <select
+                  id="select-dt"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="0.01">0.01 (High Precision)</option>
+                  <option value="0.03" selected>0.03 (Standard)</option>
+                  <option value="0.06">0.06 (Fast)</option>
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs text-slate-400"
+                  >Trajectory trail length</label
+                >
+                <select
+                  id="select-trail"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="200">200 points</option>
+                  <option value="500" selected>500 points</option>
+                  <option value="1000">1000 points</option>
+                  <option value="infinite">Infinite Trail</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Mathematical Analyzer Card -->
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur"
+        >
+          <div class="flex items-center gap-2 mb-3 text-slate-300">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="text-cyan-400"
+            >
+              <path
+                d="M4 22V4c0-.5.2-1 .6-1.4C5 2.2 5.5 2 6 2h12c.5 0 1 .2 1.4.6.4.4.6.9.6 1.4v18l-8-4-8 4z"
+              />
+              <path d="M12 2v16" />
+            </svg>
+            <h2 class="font-semibold text-sm tracking-wide uppercase">
+              Stability Analysis
+            </h2>
+          </div>
+
+          <div class="space-y-2 text-xs">
+            <!-- Calculated Equilibrium -->
+            <div
+              class="flex justify-between border-b border-slate-800/50 py-1.5"
+            >
+              <span class="text-slate-400"
+                >Equilibrium Point \((V^*, w^*)\):</span
+              >
+              <span
+                id="calc-fixed-point"
+                class="mono text-cyan-400 font-semibold"
+                >(-1.199, -0.624)</span
+              >
+            </div>
+            <!-- Jacobian Values -->
+            <div
+              class="flex justify-between border-b border-slate-800/50 py-1.5"
+            >
+              <span class="text-slate-400">Jacobian Trace (\(T\)):</span>
+              <span id="calc-trace" class="mono text-slate-300">-0.503</span>
+            </div>
+            <div
+              class="flex justify-between border-b border-slate-800/50 py-1.5"
+            >
+              <span class="text-slate-400">Jacobian Determinant (\(D\)):</span>
+              <span id="calc-det" class="mono text-slate-300">0.115</span>
+            </div>
+            <!-- Stability Classification -->
+            <div class="flex justify-between items-center py-1.5">
+              <span class="text-slate-400">Dynamical State:</span>
+              <span
+                id="calc-stability"
+                class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/30"
+                >Stable Spiral Focus</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side: Dual plots & Real-time Displays (Col-span 8) -->
+      <div class="lg:col-span-8 flex flex-col gap-6">
+        <!-- Interactive Control Ribbon -->
+        <div
+          class="bg-slate-900/40 border border-slate-800 rounded-2xl p-3 flex flex-wrap gap-3 items-center justify-between"
+        >
+          <!-- Sim Operations -->
+          <div class="flex items-center gap-2">
+            <button
+              id="btn-play-pause"
+              class="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 active:scale-95 text-slate-950 font-bold text-xs rounded-xl transition duration-150 shadow-lg shadow-cyan-500/10"
+            >
+              <span id="icon-play-pause">
+                <!-- Pause icon -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                </svg>
+              </span>
+              <span id="text-play-pause">Pause</span>
+            </button>
+
+            <button
+              id="btn-reset"
+              class="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 text-xs font-semibold rounded-xl transition"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              <span>Reset Path</span>
+            </button>
+          </div>
+
+          <!-- Pulse External Stimulus Button -->
+          <div class="flex items-center gap-3">
+            <button
+              id="btn-pulse"
+              class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-slate-950 font-black text-xs rounded-xl transition shadow-md shadow-orange-500/10"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                class="stroke-slate-950"
+              >
+                <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+              <span>Pulse Stimulus (\(\Delta V = 1.2\))</span>
+            </button>
+          </div>
+
+          <!-- State readout badges -->
+          <div class="flex gap-2">
+            <div
+              class="px-3 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs flex items-center gap-2"
+            >
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span class="text-slate-400 font-medium">V:</span>
+              <span id="readout-V" class="mono text-slate-100 font-semibold"
+                >-1.19</span
+              >
+            </div>
+            <div
+              class="px-3 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs flex items-center gap-2"
+            >
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span class="text-slate-400 font-medium">w:</span>
+              <span id="readout-w" class="mono text-slate-100 font-semibold"
+                >-0.62</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase Space Card and Canvas -->
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur flex flex-col"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-cyan-400"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="m10 15 5-3-5-3v6Z" />
+              </svg>
+              <h2 class="font-bold text-sm tracking-wide uppercase">
+                Phase Space Explorer
+              </h2>
+            </div>
+            <div class="text-[11px] text-slate-400 flex items-center gap-4">
+              <span class="flex items-center gap-1.5"
+                ><span class="w-3 h-0.5 bg-cyan-400 block"></span>
+                V-nullcline</span
+              >
+              <span class="flex items-center gap-1.5"
+                ><span class="w-3 h-0.5 bg-amber-500 block"></span>
+                w-nullcline</span
+              >
+              <span
+                class="text-xs font-semibold bg-slate-950 px-2 py-0.5 border border-slate-800 rounded text-slate-300"
+                >Click/Drag inside to interact</span
+              >
+            </div>
+          </div>
+
+          <!-- Canvas Container -->
+          <div
+            class="relative w-full aspect-[4/3] bg-slate-950 rounded-xl overflow-hidden border border-slate-850"
+          >
+            <canvas
+              id="canvas-phase"
+              class="absolute inset-0 w-full h-full cursor-crosshair"
+            ></canvas>
+
+            <!-- Vector field probe hover badge inside canvas -->
+            <div
+              id="canvas-hover-badge"
+              class="absolute bottom-4 left-4 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-2 text-[11px] mono text-slate-300 pointer-events-none hidden max-w-xs shadow-xl backdrop-blur"
+            >
+              <div
+                class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-1"
+              >
+                Probe Position
+              </div>
+              <div class="flex justify-between gap-4">
+                <span
+                  >V:
+                  <span id="probe-V" class="text-cyan-400">-0.50</span></span
+                >
+                <span
+                  >w:
+                  <span id="probe-w" class="text-amber-400">0.20</span></span
+                >
+              </div>
+              <div
+                class="mt-1 flex justify-between gap-4 border-t border-slate-800/60 pt-1"
+              >
+                <span
+                  >dV/dt:
+                  <span id="probe-dV" class="text-slate-300">0.12</span></span
+                >
+                <span
+                  >dw/dt:
+                  <span id="probe-dw" class="text-slate-300">-0.05</span></span
+                >
+              </div>
+            </div>
+
+            <!-- Dynamic Spike Alert -->
+            <div
+              id="spike-banner"
+              class="absolute top-4 right-4 bg-red-950/90 border border-red-500/40 text-red-400 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 tracking-wider uppercase hidden shadow-lg animate-pulse"
+            >
+              <span class="relative flex h-2.5 w-2.5">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"
+                ></span>
+              </span>
+              Neural Spike (Firing)
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Series Chart Card and Canvas -->
+        <div
+          class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur flex flex-col"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="text-cyan-400"
+              >
+                <path d="M3 3v18h18" />
+                <path d="m19 9-5 5-4-4-3 3" />
+              </svg>
+              <h2 class="font-bold text-sm tracking-wide uppercase">
+                Time Evolution
+              </h2>
+            </div>
+            <div class="flex gap-4 text-xs font-semibold">
+              <span class="text-cyan-400 flex items-center gap-1"
+                ><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                Membrane Potential (V)</span
+              >
+              <span class="text-amber-400 flex items-center gap-1"
+                ><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                Recovery Variable (w)</span
+              >
+            </div>
+          </div>
+
+          <!-- Canvas Container -->
+          <div
+            class="relative w-full aspect-[4/1.8] bg-slate-950 rounded-xl overflow-hidden border border-slate-850"
+          >
+            <canvas
+              id="canvas-timeseries"
+              class="absolute inset-0 w-full h-full"
+            ></canvas>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Educational & Mechanics Accordion Section -->
+    <section class="max-w-7xl w-full mx-auto px-4 md:px-6 pb-12 mt-4">
+      <div
+        class="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur space-y-4"
+      >
+        <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="text-cyan-400"
+          >
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
+          <h2 class="font-bold text-base text-slate-200">
+            FitzHugh-Nagumo Model & Phase Portrait Guide
+          </h2>
+        </div>
+
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-slate-300 leading-relaxed"
+        >
+          <div class="space-y-3">
+            <h3
+              class="font-bold text-cyan-400 text-xs tracking-wider uppercase"
+            >
+              How to Read the Phase Space
+            </h3>
+            <p>
+              The <strong>Phase Portrait</strong> plots the fast voltage \(V\)
+              (horizontal) against the slow recovery variable \(w\) (vertical).
+              Instead of tracking time directly, it allows you to visualize the
+              global mathematical trajectories of a spiking neuron.
+            </p>
+            <ul class="list-disc pl-5 space-y-2 text-xs text-slate-400">
+              <li>
+                <strong>The Nullclines</strong> represent the states where the
+                rate of change is zero. The intersection of the
+                <strong>Cubic \(V\)-nullcline</strong> and the
+                <strong>Linear \(w\)-nullcline</strong> marks the equilibrium
+                point.
+              </li>
+              <li>
+                <strong>Vector Field Arrows</strong> show the force and
+                direction the state will move when released. Brighter/longer
+                arrows indicate rapid motion (fast changes in \(V\)), typical of
+                the action potential's rising phase.
+              </li>
+              <li>
+                <strong>Click anywhere</strong> inside the Phase Space to
+                perturb the cell to a specific voltage/recovery state and
+                witness the recovery cycle.
+              </li>
+            </ul>
+          </div>
+
+          <div class="space-y-3">
+            <h3
+              class="font-bold text-amber-400 text-xs tracking-wider uppercase"
+            >
+              Key Neurobiology Dynamics to Observe
+            </h3>
+            <div class="space-y-2.5 text-xs text-slate-300">
+              <p>
+                <strong>1. Excitability & Spiking Threshold:</strong> Load the
+                <em>Excitable Rest</em> preset. Click the
+                <strong>Pulse Stimulus</strong> button. If the voltage
+                perturbation is small, the state slides back directly to rest.
+                If it crosses the cubic nullcline's unstable middle branch (the
+                threshold), it takes a massive orbital loop representing a full
+                Action Potential spike before returning to rest.
+              </p>
+              <p>
+                <strong>2. The Hopf Bifurcation (Oscillation):</strong> Switch
+                to the <em>Tonic Spiking</em> preset (raises \(I_{\text{ext}}\)
+                to 0.50). Watch the linear nullcline intersect the cubic
+                nullcline in its middle branch. The equilibrium point loses its
+                stability, resulting in an attractive
+                <strong>Limit Cycle</strong> where the neuron fires spikes
+                indefinitely.
+              </p>
+              <p>
+                <strong>3. Excitation Block:</strong> Slide the External Current
+                \(I_{\text{ext}}\) to extreme high values (e.g. \(> 1.5\)). The
+                limit cycle disappears as the intersection shifts onto the
+                stable right branch. The neuron is now "stuck" in a perpetually
+                depolarized, inactive state.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer
+      class="border-t border-slate-900 bg-slate-950 px-6 py-6 text-center text-xs text-slate-500"
+    >
+      <div
+        class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3"
+      >
+        <p>&copy; 2026 Interactive Dynamical Neurobiology Simulators</p>
+        <div class="flex gap-4">
+          <a
+            href="https://wikipedia.org/wiki/FitzHugh%E2%80%93Nagumo_model"
+            target="_blank"
+            class="hover:text-slate-300 transition"
+            >FitzHugh–Nagumo Wiki</a
+          >
+          <span>&bull;</span>
+          <a
+            href="http://www.scholarpedia.org/article/FitzHugh-Nagumo_model"
+            target="_blank"
+            class="hover:text-slate-300 transition"
+            >Scholarpedia Reference</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <!-- Simulation Logic & Canvas Rendering scripts -->
+    <script>
+      // State Variables
+      let V = -1.1994;
+      let w = -0.6243;
+      let isRunning = true;
+      let dt = 0.03;
+      let maxTrailLength = 500;
+
+      // Model Parameters (Default: Excitable Rest)
+      let I_ext = 0.0;
+      let epsilon = 0.08;
+      let a = 0.7;
+      let b = 0.8;
+
+      // Fixed point coordinates
+      let V_fixed = -1.199;
+      let w_fixed = -0.624;
+      let fixedStability = "Stable Spiral Focus";
+
+      // Track state history for trajectory path and time-series plots
+      let trajectory = []; // Array of {V, w}
+      let timeSeriesV = []; // Array of values
+      let timeSeriesW = []; // Array of values
+      let maxTimeSeriesPoints = 500;
+
+      // Track user drag status on canvas
+      let isDragging = false;
+
+      // Setup Canvases
+      const canvasPhase = document.getElementById("canvas-phase");
+      const ctxPhase = canvasPhase.getContext("2d");
+      const canvasTimeseries = document.getElementById("canvas-timeseries");
+      const ctxTimeseries = canvasTimeseries.getContext("2d");
+
+      // UI Nodes
+      const btnPlayPause = document.getElementById("btn-play-pause");
+      const iconPlayPause = document.getElementById("icon-play-pause");
+      const textPlayPause = document.getElementById("text-play-pause");
+      const btnReset = document.getElementById("btn-reset");
+      const btnPulse = document.getElementById("btn-pulse");
+
+      // Readouts & Analyzers
+      const readV = document.getElementById("readout-V");
+      const readW = document.getElementById("readout-w");
+      const valIext = document.getElementById("val-I_ext");
+      const valEps = document.getElementById("val-epsilon");
+      const valA = document.getElementById("val-a");
+      const valB = document.getElementById("val-b");
+
+      const stabilityFixedPoint = document.getElementById("calc-fixed-point");
+      const stabilityTrace = document.getElementById("calc-trace");
+      const stabilityDet = document.getElementById("calc-det");
+      const stabilityClassification = document.getElementById("calc-stability");
+
+      // Sliders
+      const sliderIext = document.getElementById("slider-I_ext");
+      const sliderEps = document.getElementById("slider-epsilon");
+      const sliderA = document.getElementById("slider-a");
+      const sliderB = document.getElementById("slider-b");
+      const selectDt = document.getElementById("select-dt");
+      const selectTrail = document.getElementById("select-trail");
+
+      // Hover components
+      const canvasHoverBadge = document.getElementById("canvas-hover-badge");
+      const probeVNode = document.getElementById("probe-V");
+      const probeWNode = document.getElementById("probe-w");
+      const probeDVNode = document.getElementById("probe-dV");
+      const probeDWNode = document.getElementById("probe-dw");
+      const spikeBanner = document.getElementById("spike-banner");
+
+      // Preset Buttons
+      const btnPresetExcitable = document.getElementById("preset-excitable");
+      const btnPresetSpiking = document.getElementById("preset-spiking");
+      const btnPresetDamped = document.getElementById("preset-damped");
+      const btnPresetBistable = document.getElementById("preset-bistable");
+
+      // Mathematics Coordinate Boundaries (Phase space math window)
+      const V_min = -2.5;
+      const V_max = 2.5;
+      const w_min = -1.5;
+      const w_max = 2.0;
+
+      // Mathematical Differential Equations
+      function fhn_dV_dt(curr_V, curr_w) {
+        return curr_V - (curr_V * curr_V * curr_V) / 3.0 - curr_w + I_ext;
+      }
+
+      function fhn_dw_dt(curr_V, curr_w) {
+        return epsilon * (curr_V + a - b * curr_w);
+      }
+
+      // Runge-Kutta 4th Order Numerical Integration Step
+      function integrateRK4() {
+        const step = dt;
+        // Step 1
+        const kV1 = fhn_dV_dt(V, w);
+        const kw1 = fhn_dw_dt(V, w);
+
+        // Step 2
+        const V2 = V + 0.5 * step * kV1;
+        const w2 = w + 0.5 * step * kw1;
+        const kV2 = fhn_dV_dt(V2, w2);
+        const kw2 = fhn_dw_dt(V2, w2);
+
+        // Step 3
+        const V3 = V + 0.5 * step * kV2;
+        const w3 = w + 0.5 * step * kw2;
+        const kV3 = fhn_dV_dt(V3, w3);
+        const kw3 = fhn_dw_dt(V3, w3);
+
+        // Step 4
+        const V4 = V + step * kV3;
+        const w4 = w + step * kw3;
+        const kV4 = fhn_dV_dt(V4, w4);
+        const kw4 = fhn_dw_dt(V4, w4);
+
+        // Compute final values
+        V += (step / 6.0) * (kV1 + 2.0 * kV2 + 2.0 * kV3 + kV4);
+        w += (step / 6.0) * (kw1 + 2.0 * kw2 + 2.0 * kw3 + kw4);
+      }
+
+      // Find the intersection (fixed point) of the nullclines
+      // Root-finding: V - V^3/3 - (V + a)/b + I_ext = 0
+      function computeStabilityAndEquilibrium() {
+        // Find the root in V via bisection
+        let low = -5.0;
+        let high = 5.0;
+        let mid = 0;
+
+        const f = (x) => {
+          if (b === 0) return x - (x * x * x) / 3.0 - a + I_ext; // Edge-case protection
+          return x - (x * x * x) / 3.0 - (x + a) / b + I_ext;
+        };
+
+        for (let i = 0; i < 80; i++) {
+          mid = (low + high) / 2.0;
+          let val = f(mid);
+          if (Math.abs(val) < 1e-9) break;
+          if (val > 0) {
+            low = mid;
+          } else {
+            high = mid;
+          }
+        }
+
+        V_fixed = mid;
+        w_fixed =
+          b !== 0
+            ? (V_fixed + a) / b
+            : V_fixed - (V_fixed * V_fixed * V_fixed) / 3.0 + I_ext;
+
+        // Stability Analysis via Jacobian evaluation at the fixed point
+        // Jacobian J = [[ 1 - V^2, -1 ],
+        //               [ epsilon, -epsilon * b ]]
+        const f_V = 1.0 - V_fixed * V_fixed;
+        const f_w = -1.0;
+        const g_V = epsilon;
+        const g_w = -epsilon * b;
+
+        const trace = f_V + g_w;
+        const det = f_V * g_w - f_w * g_V;
+
+        // Discriminant
+        const disc = trace * trace - 4 * det;
+
+        if (det < 0) {
+          fixedStability = "Unstable Saddle Point";
+        } else {
+          if (trace < 0) {
+            if (disc < 0) {
+              fixedStability = "Stable Spiral Focus";
+            } else {
+              fixedStability = "Stable Node";
+            }
+          } else {
+            if (disc < 0) {
+              fixedStability = "Unstable Spiral Focus";
+            } else {
+              fixedStability = "Unstable Node";
+            }
+          }
+        }
+
+        // Update UI elements
+        stabilityFixedPoint.textContent = `(${V_fixed.toFixed(3)}, ${w_fixed.toFixed(3)})`;
+        stabilityTrace.textContent = trace.toFixed(3);
+        stabilityDet.textContent = det.toFixed(3);
+        stabilityClassification.textContent = fixedStability;
+
+        // Color scheme adjustments for stability badge
+        stabilityClassification.className =
+          "px-2 py-0.5 rounded text-[11px] font-semibold " +
+          (trace < 0 && det > 0
+            ? "bg-emerald-950 text-emerald-400 border border-emerald-800/30"
+            : "bg-rose-950 text-rose-400 border border-rose-800/30");
+      }
+
+      // Set canvas pixels sizes correctly based on their container dimension
+      function resizeCanvases() {
+        const containerPhase = canvasPhase.parentElement;
+        canvasPhase.width = containerPhase.clientWidth;
+        canvasPhase.height = containerPhase.clientHeight;
+
+        const containerTime = canvasTimeseries.parentElement;
+        canvasTimeseries.width = containerTime.clientWidth;
+        canvasTimeseries.height = containerTime.clientHeight;
+      }
+
+      // Coordinates conversion: math values to phase portrait screen coordinates
+      function mathToPhaseScreen(m_V, m_w) {
+        const scaleX = canvasPhase.width / (V_max - V_min);
+        const scaleY = canvasPhase.height / (w_max - w_min);
+
+        const x = (m_V - V_min) * scaleX;
+        // Invert Y axis because screen pixels increase downwards
+        const y = canvasPhase.height - (m_w - w_min) * scaleY;
+        return { x, y };
+      }
+
+      // Coordinates conversion: screen coordinates to math coordinates
+      function phaseScreenToMath(screen_x, screen_y) {
+        const m_V = V_min + (screen_x / canvasPhase.width) * (V_max - V_min);
+        const m_w =
+          w_min + (1.0 - screen_y / canvasPhase.height) * (w_max - w_min);
+        return { m_V, m_w };
+      }
+
+      // Draw Vector Field arrows on the Phase portrait
+      function drawVectorField() {
+        const stepV = 0.25;
+        const stepw = 0.25;
+
+        ctxPhase.strokeStyle = "rgba(71, 85, 105, 0.15)"; // Tailwind Slate-600 with low alpha
+        ctxPhase.lineWidth = 1;
+
+        for (let gridV = V_min + stepV / 2; gridV < V_max; gridV += stepV) {
+          for (let gridw = w_min + stepw / 2; gridw < w_max; gridw += stepw) {
+            const dV = fhn_dV_dt(gridV, gridw);
+            const dw = fhn_dw_dt(gridV, gridw);
+
+            // Vector magnitude
+            const length = Math.sqrt(dV * dV + dw * dw);
+            if (length < 0.001) continue;
+
+            // Normalized and scaled length for visuals
+            const visualScale = 0.08;
+            const arrowLength = Math.min(0.12, length * visualScale);
+            const norm_dV = (dV / length) * arrowLength;
+            const norm_dw = (dw / length) * arrowLength;
+
+            // Start & End positions in math space
+            const startScreen = mathToPhaseScreen(gridV, gridw);
+            const endScreen = mathToPhaseScreen(
+              gridV + norm_dV,
+              gridw + norm_dw,
+            );
+
+            // Change vector colors by speed
+            const speedFactor = Math.min(1.0, length / 4.0);
+            ctxPhase.strokeStyle = `rgba(${100 + speedFactor * 100}, ${120 + speedFactor * 50}, ${150 - speedFactor * 50}, ${0.15 + speedFactor * 0.2})`;
+
+            // Draw Arrow Line
+            ctxPhase.beginPath();
+            ctxPhase.moveTo(startScreen.x, startScreen.y);
+            ctxPhase.lineTo(endScreen.x, endScreen.y);
+            ctxPhase.stroke();
+
+            // Arrow head
+            const angle = Math.atan2(
+              startScreen.y - endScreen.y,
+              endScreen.x - startScreen.x,
+            );
+            ctxPhase.beginPath();
+            ctxPhase.moveTo(endScreen.x, endScreen.y);
+            ctxPhase.lineTo(
+              endScreen.x - 3 * Math.cos(angle - Math.PI / 6),
+              endScreen.y + 3 * Math.sin(angle - Math.PI / 6),
+            );
+            ctxPhase.lineTo(
+              endScreen.x - 3 * Math.cos(angle + Math.PI / 6),
+              endScreen.y + 3 * Math.sin(angle + Math.PI / 6),
+            );
+            ctxPhase.closePath();
+            ctxPhase.fillStyle = ctxPhase.strokeStyle;
+            ctxPhase.fill();
+          }
+        }
+      }
+
+      // Draw the Phase Portrait Screen
+      function drawPhaseSpace() {
+        // Clear canvas
+        ctxPhase.clearRect(0, 0, canvasPhase.width, canvasPhase.height);
+
+        // Draw mathematical axes (V=0, w=0)
+        const origin = mathToPhaseScreen(0, 0);
+        ctxPhase.strokeStyle = "rgba(51, 65, 85, 0.4)"; // Slate-700
+        ctxPhase.lineWidth = 1.5;
+
+        // Horizontal V-axis
+        ctxPhase.beginPath();
+        ctxPhase.moveTo(0, origin.y);
+        ctxPhase.lineTo(canvasPhase.width, origin.y);
+        ctxPhase.stroke();
+
+        // Vertical w-axis
+        ctxPhase.beginPath();
+        ctxPhase.moveTo(origin.x, 0);
+        ctxPhase.lineTo(origin.x, canvasPhase.height);
+        ctxPhase.stroke();
+
+        // Draw Grid labels on boundaries
+        ctxPhase.fillStyle = "#64748b"; // Slate-500
+        ctxPhase.font = "10px JetBrains Mono";
+        ctxPhase.fillText(
+          "V (Potential)",
+          canvasPhase.width - 80,
+          origin.y + 15,
+        );
+        ctxPhase.fillText("w (Recovery)", origin.x + 8, 15);
+
+        // Draw Vector Field arrows
+        drawVectorField();
+
+        // Draw V-nullcline (cubic): w = V - V^3/3 + I_ext
+        ctxPhase.beginPath();
+        ctxPhase.strokeStyle = "#22d3ee"; // Cyan-400
+        ctxPhase.lineWidth = 2.5;
+        let started = false;
+        for (let screen_x = 0; screen_x < canvasPhase.width; screen_x++) {
+          const math_V =
+            V_min + (screen_x / canvasPhase.width) * (V_max - V_min);
+          const math_w = math_V - (math_V * math_V * math_V) / 3.0 + I_ext;
+
+          const pt = mathToPhaseScreen(math_V, math_w);
+          if (pt.y >= 0 && pt.y <= canvasPhase.height) {
+            if (!started) {
+              ctxPhase.moveTo(screen_x, pt.y);
+              started = true;
+            } else {
+              ctxPhase.lineTo(screen_x, pt.y);
+            }
+          }
+        }
+        ctxPhase.stroke();
+
+        // Draw w-nullcline (linear): w = (V + a)/b
+        ctxPhase.beginPath();
+        ctxPhase.strokeStyle = "#fbbf24"; // Amber-400
+        ctxPhase.lineWidth = 2.5;
+
+        const pt_start = mathToPhaseScreen(V_min, (V_min + a) / b);
+        const pt_end = mathToPhaseScreen(V_max, (V_max + a) / b);
+        ctxPhase.moveTo(pt_start.x, pt_start.y);
+        ctxPhase.lineTo(pt_end.x, pt_end.y);
+        ctxPhase.stroke();
+
+        // Draw equilibrium fixed point node
+        const nodeScreen = mathToPhaseScreen(V_fixed, w_fixed);
+        ctxPhase.beginPath();
+        ctxPhase.arc(nodeScreen.x, nodeScreen.y, 6, 0, 2 * Math.PI);
+        ctxPhase.fillStyle = "#f43f5e"; // Rose-500
+        ctxPhase.fill();
+        ctxPhase.strokeStyle = "#ffffff";
+        ctxPhase.lineWidth = 1.5;
+        ctxPhase.stroke();
+
+        // Draw trajectory trail
+        if (trajectory.length > 1) {
+          ctxPhase.beginPath();
+          ctxPhase.strokeStyle = "rgba(129, 140, 248, 0.7)"; // Indigo-400
+          ctxPhase.lineWidth = 2.0;
+
+          const firstPt = mathToPhaseScreen(trajectory[0].V, trajectory[0].w);
+          ctxPhase.moveTo(firstPt.x, firstPt.y);
+          for (let i = 1; i < trajectory.length; i++) {
+            const pt = mathToPhaseScreen(trajectory[i].V, trajectory[i].w);
+            ctxPhase.lineTo(pt.x, pt.y);
+          }
+          ctxPhase.stroke();
+        }
+
+        // Draw current state pulse point
+        const currentScreen = mathToPhaseScreen(V, w);
+        ctxPhase.beginPath();
+        ctxPhase.arc(currentScreen.x, currentScreen.y, 8, 0, 2 * Math.PI);
+        ctxPhase.fillStyle = "#06b6d4"; // Cyan-500
+        ctxPhase.shadowColor = "#06b6d4";
+        ctxPhase.shadowBlur = 12;
+        ctxPhase.fill();
+        ctxPhase.shadowBlur = 0; // Reset shadow for next drawings
+        ctxPhase.strokeStyle = "#ffffff";
+        ctxPhase.lineWidth = 2;
+        ctxPhase.stroke();
+      }
+
+      // Draw Time-Series scroll plot
+      function drawTimeSeries() {
+        ctxTimeseries.clearRect(
+          0,
+          0,
+          canvasTimeseries.width,
+          canvasTimeseries.height,
+        );
+
+        // Draw grid lines
+        ctxTimeseries.strokeStyle = "rgba(51, 65, 85, 0.3)"; // Slate-800
+        ctxTimeseries.lineWidth = 1;
+        const numLines = 6;
+        for (let i = 1; i < numLines; i++) {
+          const y = (canvasTimeseries.height / numLines) * i;
+          ctxTimeseries.beginPath();
+          ctxTimeseries.moveTo(0, y);
+          ctxTimeseries.lineTo(canvasTimeseries.width, y);
+          ctxTimeseries.stroke();
+        }
+
+        // Plot baseline representation
+        ctxTimeseries.strokeStyle = "rgba(71, 85, 105, 0.5)";
+        ctxTimeseries.beginPath();
+        const zeroY = canvasTimeseries.height / 2;
+        ctxTimeseries.moveTo(0, zeroY);
+        ctxTimeseries.lineTo(canvasTimeseries.width, zeroY);
+        ctxTimeseries.stroke();
+
+        // Value conversion to scale matching both states
+        const mapValToY = (val) => {
+          // Range mapping: value [-2.5, 2.5] maps to [canvas height, 0]
+          const range = 5.0;
+          return (
+            canvasTimeseries.height -
+            ((val + 2.5) / range) * canvasTimeseries.height
+          );
+        };
+
+        const stepSizeX = canvasTimeseries.width / maxTimeSeriesPoints;
+
+        // Draw membrane potential V (Cyan-400)
+        if (timeSeriesV.length > 1) {
+          ctxTimeseries.beginPath();
+          ctxTimeseries.strokeStyle = "#22d3ee";
+          ctxTimeseries.lineWidth = 2.5;
+
+          ctxTimeseries.moveTo(0, mapValToY(timeSeriesV[0]));
+          for (let i = 1; i < timeSeriesV.length; i++) {
+            ctxTimeseries.lineTo(i * stepSizeX, mapValToY(timeSeriesV[i]));
+          }
+          ctxTimeseries.stroke();
+        }
+
+        // Draw recovery variable w (Amber-400)
+        if (timeSeriesW.length > 1) {
+          ctxTimeseries.beginPath();
+          ctxTimeseries.strokeStyle = "#fbbf24";
+          ctxTimeseries.lineWidth = 2.0;
+
+          ctxTimeseries.moveTo(0, mapValToY(timeSeriesW[0]));
+          for (let i = 1; i < timeSeriesW.length; i++) {
+            ctxTimeseries.lineTo(i * stepSizeX, mapValToY(timeSeriesW[i]));
+          }
+          ctxTimeseries.stroke();
+        }
+
+        // Add numeric labels inside the graph
+        ctxTimeseries.fillStyle = "#64748b";
+        ctxTimeseries.font = "10px JetBrains Mono";
+        ctxTimeseries.fillText("+2.0 —", 5, mapValToY(2.0) + 4);
+        ctxTimeseries.fillText(" 0.0 —", 5, zeroY + 4);
+        ctxTimeseries.fillText("-2.0 —", 5, mapValToY(-2.0) + 4);
+      }
+
+      // Main animation loop
+      function loop() {
+        if (isRunning && !isDragging) {
+          // Run simulation sub-steps to ensure high frequency integration stability
+          const subSteps = 3;
+          for (let i = 0; i < subSteps; i++) {
+            integrateRK4();
+          }
+
+          // Action potential firing spike detection (> 1.0 Voltage threshold)
+          if (V > 1.0) {
+            spikeBanner.classList.remove("hidden");
+          } else {
+            spikeBanner.classList.add("hidden");
+          }
+
+          // Add to history trace
+          trajectory.push({ V, w });
+          if (
+            maxTrailLength !== "infinite" &&
+            trajectory.length > maxTrailLength
+          ) {
+            trajectory.shift();
+          }
+
+          // Add to time series values arrays
+          timeSeriesV.push(V);
+          timeSeriesW.push(w);
+          if (timeSeriesV.length > maxTimeSeriesPoints) {
+            timeSeriesV.shift();
+            timeSeriesW.shift();
+          }
+
+          // Live dynamic numeric label displays
+          readV.textContent = V.toFixed(3);
+          readW.textContent = w.toFixed(3);
+        }
+
+        // Draw updates
+        drawPhaseSpace();
+        drawTimeSeries();
+
+        requestAnimationFrame(loop);
+      }
+
+      // Toggle simulation playback state
+      function toggleSimulation() {
+        isRunning = !isRunning;
+        if (isRunning) {
+          textPlayPause.textContent = "Pause";
+          iconPlayPause.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>`;
+        } else {
+          textPlayPause.textContent = "Run";
+          iconPlayPause.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+        }
+      }
+
+      // Pulse action potential injection trigger
+      function applyStimulusPulse() {
+        V += 1.2; // Drastically elevate Fast Voltage variable
+        // Ensure V remains within bounding math space limits
+        if (V > V_max) V = V_max - 0.1;
+
+        // Update historical trajectories immediately
+        trajectory.push({ V, w });
+        timeSeriesV.push(V);
+        timeSeriesW.push(w);
+      }
+
+      // Set interactive system values manually from sliders
+      function updateParametersFromUI() {
+        I_ext = parseFloat(sliderIext.value);
+        epsilon = parseFloat(sliderEps.value);
+        a = parseFloat(sliderA.value);
+        b = parseFloat(sliderB.value);
+
+        valIext.textContent = I_ext.toFixed(2);
+        valEps.textContent = epsilon.toFixed(3);
+        valA.textContent = a.toFixed(2);
+        valB.textContent = b.toFixed(2);
+
+        // Re-run fixed points and analysis calculations on structural parameter adjustments
+        computeStabilityAndEquilibrium();
+      }
+
+      // Apply biological preset settings configurations
+      function applyPreset(presetType) {
+        if (presetType === "excitable") {
+          sliderIext.value = "0.00";
+          sliderEps.value = "0.08";
+          sliderA.value = "0.70";
+          sliderB.value = "0.80";
+          V = -1.199;
+          w = -0.624;
+        } else if (presetType === "spiking") {
+          sliderIext.value = "0.50";
+          sliderEps.value = "0.08";
+          sliderA.value = "0.70";
+          sliderB.value = "0.80";
+          V = -1.0;
+          w = -0.2;
+        } else if (presetType === "damped") {
+          sliderIext.value = "0.40";
+          sliderEps.value = "0.25"; // Higher recovery rate yields faster spiraling
+          sliderA.value = "0.70";
+          sliderB.value = "0.80";
+          V = 0.5;
+          w = 0.5;
+        } else if (presetType === "bistable") {
+          // Multiple stable roots require feedback slope b > 1
+          sliderIext.value = "-0.05";
+          sliderEps.value = "0.05";
+          sliderA.value = "0.10";
+          sliderB.value = "1.50";
+          V = -1.25;
+          w = -0.75;
+        }
+
+        // Sync settings arrays and UI calculations
+        trajectory = [];
+        timeSeriesV = [];
+        timeSeriesW = [];
+        updateParametersFromUI();
+      }
+
+      // Drag-drop or hover exploration in Canvas coordinates handling
+      function handleCanvasInteraction(e) {
+        const rect = canvasPhase.getBoundingClientRect();
+        const clientX = e.clientX || e.touches[0].clientX;
+        const clientY = e.clientY || e.touches[0].clientY;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        const { m_V, m_w } = phaseScreenToMath(x, y);
+
+        // Boundary protections
+        V = Math.max(V_min, Math.min(V_max, m_V));
+        w = Math.max(w_min, Math.min(w_max, m_w));
+
+        trajectory.push({ V, w });
+        timeSeriesV.push(V);
+        timeSeriesW.push(w);
+
+        readV.textContent = V.toFixed(3);
+        readW.textContent = w.toFixed(3);
+      }
+
+      function handleProbeHover(e) {
+        const rect = canvasPhase.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const { m_V, m_w } = phaseScreenToMath(x, y);
+
+        // Calculate localized differential flows at hover coordinates
+        const dV = m_V - (m_V * m_V * m_V) / 3.0 - m_w + I_ext;
+        const dw = epsilon * (m_V + a - b * m_w);
+
+        // Render details card inside Phase portrait
+        canvasHoverBadge.classList.remove("hidden");
+        probeVNode.textContent = m_V.toFixed(2);
+        probeWNode.textContent = m_w.toFixed(2);
+        probeDVNode.textContent = dV.toFixed(2);
+        probeDWNode.textContent = dw.toFixed(2);
+      }
+
+      // Event Listeners setup
+      window.addEventListener("load", () => {
+        resizeCanvases();
+        updateParametersFromUI();
+        loop();
+      });
+
+      window.addEventListener("resize", () => {
+        resizeCanvases();
+      });
+
+      // Control ribbon activations
+      btnPlayPause.addEventListener("click", toggleSimulation);
+      btnReset.addEventListener("click", () => {
+        trajectory = [];
+      });
+      btnPulse.addEventListener("click", applyStimulusPulse);
+
+      // Interactive sliders action listeners
+      sliderIext.addEventListener("input", updateParametersFromUI);
+      sliderEps.addEventListener("input", updateParametersFromUI);
+      sliderA.addEventListener("input", updateParametersFromUI);
+      sliderB.addEventListener("input", updateParametersFromUI);
+
+      selectDt.addEventListener("change", () => {
+        dt = parseFloat(selectDt.value);
+      });
+
+      selectTrail.addEventListener("change", () => {
+        const val = selectTrail.value;
+        if (val === "infinite") {
+          maxTrailLength = "infinite";
+        } else {
+          maxTrailLength = parseInt(val);
+        }
+      });
+
+      // Biological Neurons presets triggers
+      btnPresetExcitable.addEventListener("click", () =>
+        applyPreset("excitable"),
+      );
+      btnPresetSpiking.addEventListener("click", () => applyPreset("spiking"));
+      btnPresetDamped.addEventListener("click", () => applyPreset("damped"));
+      btnPresetBistable.addEventListener("click", () =>
+        applyPreset("bistable"),
+      );
+
+      // Drag systems over the Phase Portrait Canvas
+      canvasPhase.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        handleCanvasInteraction(e);
+      });
+
+      canvasPhase.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          handleCanvasInteraction(e);
+        } else {
+          handleProbeHover(e);
+        }
+      });
+
+      canvasPhase.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+
+      canvasPhase.addEventListener("mouseleave", () => {
+        isDragging = false;
+        canvasHoverBadge.classList.add("hidden");
+      });
+
+      // Touch Support for mobile devices
+      canvasPhase.addEventListener("touchstart", (e) => {
+        isDragging = true;
+        handleCanvasInteraction(e);
+      });
+
+      canvasPhase.addEventListener("touchmove", (e) => {
+        if (isDragging) {
+          handleCanvasInteraction(e);
+        }
+      });
+
+      canvasPhase.addEventListener("touchend", () => {
+        isDragging = false;
+      });
+    </script>
+  </body>
+</html>
