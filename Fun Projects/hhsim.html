@@ -1,0 +1,1895 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Hodgkin-Huxley Neuron Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for beautiful icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Chart.js for smooth performance rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax for rendering gorgeous math equations -->
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [
+            ["$", "$"],
+            ["\\(", "\\)"],
+          ],
+          displayMath: [
+            ["$$", "$$"],
+            ["\\[", "\\]"],
+          ],
+        },
+        svg: {
+          fontCache: "global",
+        },
+      };
+    </script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    ></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .mono {
+        font-family: "JetBrains Mono", monospace;
+      }
+      /* Custom scrollbar for control panels */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(15, 23, 42, 0.05);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.5);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.7);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-teal-500 selection:text-white"
+  >
+    <!-- HEADER BAR -->
+    <header
+      class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="p-2.5 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl text-slate-950 shadow-lg shadow-teal-500/20"
+        >
+          <i class="fa-solid fa-wave-square text-xl animate-pulse"></i>
+        </div>
+        <div>
+          <h1
+            class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent"
+          >
+            Hodgkin-Huxley Neural Simulator
+          </h1>
+          <p class="text-xs text-slate-400">
+            Interactive Dynamic Phase Space & Gate Kinetics Sandbox
+          </p>
+        </div>
+      </div>
+
+      <!-- Simulation State Badge -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-xs font-semibold"
+        >
+          <span
+            id="sim-status-dot"
+            class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"
+          ></span>
+          <span id="sim-status-text" class="text-slate-300">Running</span>
+        </div>
+        <div
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-xs font-mono text-teal-400"
+        >
+          <span>Time:</span>
+          <span id="current-time-val">0.00</span> ms
+        </div>
+        <button
+          onclick="openEquationModal()"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-xs font-medium transition text-indigo-300"
+        >
+          <i class="fa-solid fa-square-root-variable"></i> Equations
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN APP WRAPPER -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+      <!-- LEFT COLUMN: CONTROLS & PARAMS (lg:col-span-4) -->
+      <section class="lg:col-span-4 flex flex-col gap-6">
+        <!-- PANEL: CONTROLS -->
+        <div
+          class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-4"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-800 pb-3"
+          >
+            <h2
+              class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-sliders text-teal-500"></i> Simulation
+              Controls
+            </h2>
+            <span
+              class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono"
+              >Real-Time</span
+            >
+          </div>
+
+          <!-- Simulation Buttons -->
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              id="btn-toggle-sim"
+              onclick="toggleSimulation()"
+              class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition active:scale-95 shadow-lg shadow-teal-500/10"
+            >
+              <i id="icon-toggle-sim" class="fa-solid fa-pause text-base"></i>
+              <span
+                id="label-toggle-sim"
+                class="text-[10px] uppercase tracking-wider"
+                >Pause</span
+              >
+            </button>
+            <button
+              onclick="stepSimulation()"
+              class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition active:scale-95"
+            >
+              <i class="fa-solid fa-forward-step text-base"></i>
+              <span class="text-[10px] uppercase tracking-wider">Step</span>
+            </button>
+            <button
+              onclick="resetSimulation()"
+              class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition active:scale-95"
+            >
+              <i class="fa-solid fa-rotate-left text-base"></i>
+              <span class="text-[10px] uppercase tracking-wider">Reset</span>
+            </button>
+          </div>
+
+          <!-- Fast Preset Triggers -->
+          <div class="flex flex-col gap-2 mt-2">
+            <label class="text-xs font-semibold text-slate-400"
+              >Biological Presets</label
+            >
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                onclick="loadPreset('single')"
+                class="py-1.5 px-3 rounded-lg bg-indigo-5050/20 hover:bg-indigo-500/30 border border-indigo-500/20 text-indigo-300 text-xs text-left transition flex items-center justify-between"
+              >
+                <span>⚡ Single Spike</span>
+                <i class="fa-solid fa-bolt text-[10px] opacity-70"></i>
+              </button>
+              <button
+                onclick="loadPreset('repetitive')"
+                class="py-1.5 px-3 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/20 text-emerald-300 text-xs text-left transition flex items-center justify-between"
+              >
+                <span>🔄 Repetitive</span>
+                <i class="fa-solid fa-redo text-[10px] opacity-70"></i>
+              </button>
+              <button
+                onclick="loadPreset('refractory')"
+                class="py-1.5 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/20 text-amber-300 text-xs text-left transition flex items-center justify-between"
+              >
+                <span>🛡️ Refractory</span>
+                <i class="fa-solid fa-hourglass text-[10px] opacity-70"></i>
+              </button>
+              <button
+                onclick="loadPreset('anodal')"
+                class="py-1.5 px-3 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/20 text-purple-300 text-xs text-left transition flex items-center justify-between"
+              >
+                <span>📉 Anodal Break</span>
+                <i
+                  class="fa-solid fa-arrow-trend-down text-[10px] opacity-70"
+                ></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Simulation Settings -->
+          <div class="grid grid-cols-2 gap-4 border-t border-slate-800 pt-3">
+            <div>
+              <label class="text-[11px] text-slate-400 block mb-1"
+                >Integration Step $dt$ (ms)</label
+              >
+              <input
+                id="param-dt"
+                type="number"
+                step="0.001"
+                min="0.001"
+                max="0.1"
+                value="0.025"
+                onchange="validateAndUpdateParam(this)"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-mono text-teal-400 focus:outline-none focus:border-teal-500"
+              />
+            </div>
+            <div>
+              <label class="text-[11px] text-slate-400 block mb-1"
+                >Render Delay (ms/step)</label
+              >
+              <input
+                id="param-delay"
+                type="number"
+                step="1"
+                min="1"
+                max="200"
+                value="4"
+                onchange="validateAndUpdateParam(this)"
+                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-mono text-teal-400 focus:outline-none focus:border-teal-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: ELECTRICAL STIMULUS -->
+        <div
+          class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-4"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-800 pb-3"
+          >
+            <h2
+              class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-plug text-amber-500"></i> Stimulator
+              (Applied Current)
+            </h2>
+            <span id="stim-indicator" class="text-xs text-amber-400 font-mono"
+              >0.00 μA/cm²</span
+            >
+          </div>
+
+          <!-- Trigger Manual Shock -->
+          <div class="flex gap-2">
+            <button
+              onclick="triggerShock()"
+              class="flex-1 py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider hover:from-amber-400 hover:to-orange-400 transition active:scale-95 shadow-md shadow-amber-500/10"
+            >
+              <i class="fa-solid fa-bolt mr-1"></i> Trigger Pulse Now
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <!-- Base continuous current Slider -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400"
+                  >Continuous Current ($I_{bias}$)</span
+                >
+                <span id="val-bias" class="font-mono text-teal-400"
+                  >0.0 μA</span
+                >
+              </div>
+              <input
+                id="slider-bias"
+                type="range"
+                min="0"
+                max="40"
+                step="0.1"
+                value="0"
+                oninput="updateStimulusParams()"
+                class="w-full accent-teal-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <!-- Pulse Amplitude Slider -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400"
+                  >Pulse Amplitude ($I_{pulse}$)</span
+                >
+                <span id="val-pulse-amp" class="font-mono text-amber-400"
+                  >15.0 μA</span
+                >
+              </div>
+              <input
+                id="slider-pulse-amp"
+                type="range"
+                min="0"
+                max="80"
+                step="0.5"
+                value="15"
+                oninput="updateStimulusParams()"
+                class="w-full accent-amber-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Pulse Start -->
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="text-slate-400">Pulse Start (ms)</span>
+                  <span id="val-pulse-start" class="font-mono text-slate-300"
+                    >10.0</span
+                  >
+                </div>
+                <input
+                  id="slider-pulse-start"
+                  type="range"
+                  min="1"
+                  max="100"
+                  step="0.5"
+                  value="10"
+                  oninput="updateStimulusParams()"
+                  class="w-full accent-indigo-500 bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              <!-- Pulse Duration -->
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="text-slate-400">Pulse Width (ms)</span>
+                  <span id="val-pulse-width" class="font-mono text-slate-300"
+                    >2.0</span
+                  >
+                </div>
+                <input
+                  id="slider-pulse-width"
+                  type="range"
+                  min="0.1"
+                  max="25"
+                  step="0.1"
+                  value="2"
+                  oninput="updateStimulusParams()"
+                  class="w-full accent-indigo-500 bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: NEURON BIOPHYSICS PARAMETERS -->
+        <div
+          class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-4"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-800 pb-3"
+          >
+            <h2
+              class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-dna text-emerald-500"></i> Channel
+              Parameters
+            </h2>
+            <button
+              onclick="restoreDefaultBiophysics()"
+              class="text-[10px] text-teal-400 hover:text-teal-300 transition"
+            >
+              Reset Defaults
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <!-- Membrane Capacitance -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">Membrane Capacitance ($C_m$)</span>
+                <span class="font-mono text-slate-300"
+                  ><span id="val-cm">1.0</span> μF/cm²</span
+                >
+              </div>
+              <input
+                id="slider-cm"
+                type="range"
+                min="0.2"
+                max="3.0"
+                step="0.1"
+                value="1.0"
+                oninput="updateBiophysicsParams()"
+                class="w-full accent-emerald-500 bg-slate-800 h-1 appearance-none cursor-pointer"
+              />
+            </div>
+
+            <!-- Sodium Channel Parameters -->
+            <div
+              class="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-2.5"
+            >
+              <span class="text-xs font-semibold text-red-400"
+                >Sodium Channels ($Na^+$)</span
+              >
+              <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                  <span class="text-slate-400">Max Conductance ($g_{Na}$)</span>
+                  <span class="font-mono text-slate-300"
+                    ><span id="val-gna">120.0</span> mS/cm²</span
+                  >
+                </div>
+                <input
+                  id="slider-gna"
+                  type="range"
+                  min="0"
+                  max="200"
+                  step="1"
+                  value="120"
+                  oninput="updateBiophysicsParams()"
+                  class="w-full accent-red-500 bg-slate-800 h-1 appearance-none cursor-pointer"
+                />
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                  <span class="text-slate-400"
+                    >Reversal Potential ($E_{Na}$)</span
+                  >
+                  <span class="font-mono text-slate-300"
+                    ><span id="val-ena">50.0</span> mV</span
+                  >
+                </div>
+                <input
+                  id="slider-ena"
+                  type="range"
+                  min="20"
+                  max="80"
+                  step="1"
+                  value="50"
+                  oninput="updateBiophysicsParams()"
+                  class="w-full accent-red-500 bg-slate-800 h-1 appearance-none cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <!-- Potassium Channel Parameters -->
+            <div
+              class="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-2.5"
+            >
+              <span class="text-xs font-semibold text-blue-400"
+                >Potassium Channels ($K^+$)</span
+              >
+              <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                  <span class="text-slate-400">Max Conductance ($g_K$)</span>
+                  <span class="font-mono text-slate-300"
+                    ><span id="val-gk">36.0</span> mS/cm²</span
+                  >
+                </div>
+                <input
+                  id="slider-gk"
+                  type="range"
+                  min="0"
+                  max="80"
+                  step="0.5"
+                  value="36"
+                  oninput="updateBiophysicsParams()"
+                  class="w-full accent-blue-500 bg-slate-800 h-1 appearance-none cursor-pointer"
+                />
+              </div>
+              <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                  <span class="text-slate-400">Reversal Potential ($E_K$)</span>
+                  <span class="font-mono text-slate-300"
+                    ><span id="val-ek">-77.0</span> mV</span
+                  >
+                </div>
+                <input
+                  id="slider-ek"
+                  type="range"
+                  min="-100"
+                  max="-50"
+                  step="1"
+                  value="-77"
+                  oninput="updateBiophysicsParams()"
+                  class="w-full accent-blue-500 bg-slate-800 h-1 appearance-none cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <!-- Leak Channel Parameters -->
+            <div
+              class="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-col gap-2.5"
+            >
+              <span class="text-xs font-semibold text-slate-400"
+                >Leakage Channels ($L$)</span
+              >
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <div class="flex justify-between text-[10px] mb-0.5">
+                    <span>$g_L$ (mS)</span>
+                    <span id="val-gl" class="font-mono text-slate-300"
+                      >0.3</span
+                    >
+                  </div>
+                  <input
+                    id="slider-gl"
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.05"
+                    value="0.3"
+                    oninput="updateBiophysicsParams()"
+                    class="w-full accent-slate-400 bg-slate-800 h-1 appearance-none cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <div class="flex justify-between text-[10px] mb-0.5">
+                    <span>$E_L$ (mV)</span>
+                    <span id="val-el" class="font-mono text-slate-300"
+                      >-54.4</span
+                    >
+                  </div>
+                  <input
+                    id="slider-el"
+                    type="range"
+                    min="-70"
+                    max="-40"
+                    step="0.1"
+                    value="-54.4"
+                    oninput="updateBiophysicsParams()"
+                    class="w-full accent-slate-400 bg-slate-800 h-1 appearance-none cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: INTERACTIVE VISUALIZATIONS (lg:col-span-8) -->
+      <section class="lg:col-span-8 flex flex-col gap-6">
+        <!-- ROW 1: PRIMARY VOLTAGE GRAPH -->
+        <div
+          class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+        >
+          <div
+            class="flex items-center justify-between border-b border-slate-800 pb-2"
+          >
+            <div class="flex items-center gap-2">
+              <span
+                class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"
+              ></span>
+              <h2
+                class="font-bold text-sm tracking-wider uppercase text-slate-300"
+              >
+                Membrane Potential vs Time
+              </h2>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-mono">
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-1.5 bg-teal-400 inline-block rounded"></span
+                ><span>$V$ (mV)</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-3 h-1.5 bg-amber-500 inline-block rounded"></span
+                ><span>$I_{app}$ (μA)</span>
+              </div>
+            </div>
+          </div>
+          <div class="relative w-full h-64">
+            <canvas id="chart-voltage"></canvas>
+          </div>
+        </div>
+
+        <!-- ROW 2: PHASE SPACE & GATE GRAPH GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- PHASE SPACE PLOTTER -->
+          <div
+            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+          >
+            <div
+              class="flex items-center justify-between border-b border-slate-800 pb-2"
+            >
+              <h2
+                class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+              >
+                <i class="fa-solid fa-circle-nodes text-indigo-400"></i>
+                Interactive Phase Space
+              </h2>
+
+              <!-- Axis mapping controls -->
+              <div class="flex items-center gap-1">
+                <label class="text-[10px] text-slate-400">Y-Axis:</label>
+                <select
+                  id="select-phase-y"
+                  onchange="changePhaseSpaceY()"
+                  class="bg-slate-900 text-xs border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 focus:outline-none focus:border-teal-500"
+                >
+                  <option value="n" selected>n (K activation)</option>
+                  <option value="m">m (Na activation)</option>
+                  <option value="h">h (Na inactivation)</option>
+                  <option value="n4">n⁴ (Potassium Gate)</option>
+                  <option value="m3h">m³h (Sodium Gate)</option>
+                </select>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-tight">
+              Plots Membrane Potential $V$ (X) vs the chosen parameter (Y).
+              <strong>Click directly on the canvas to clamp state!</strong>
+            </p>
+
+            <div class="relative w-full h-60">
+              <canvas id="chart-phase-space"></canvas>
+            </div>
+          </div>
+
+          <!-- GATING VARIABLES & FRACTIONAL CONDUCTANCES -->
+          <div
+            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+          >
+            <div
+              class="flex items-center justify-between border-b border-slate-800 pb-2"
+            >
+              <h2
+                class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+              >
+                <i class="fa-solid fa-chart-line text-blue-400"></i> Activation
+                Dynamics ($n^4, m^3h$)
+              </h2>
+
+              <!-- Graph type toggling -->
+              <div class="flex items-center gap-2">
+                <button
+                  id="btn-show-gates-raw"
+                  onclick="toggleGatesGraphType('raw')"
+                  class="px-2 py-0.5 text-[10px] rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 transition"
+                >
+                  Raw Gating (m,n,h)
+                </button>
+                <button
+                  id="btn-show-gates-composite"
+                  onclick="toggleGatesGraphType('composite')"
+                  class="px-2 py-0.5 text-[10px] rounded bg-slate-800 text-slate-400 border border-transparent transition"
+                >
+                  Composite ($n^4,m^3h,m^3$)
+                </button>
+              </div>
+            </div>
+
+            <div class="relative w-full h-60">
+              <canvas id="chart-gates"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROW 3: RATE OF CHANGES & KINETIC RATE CONSTANTS GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- RATE OF CHANGES CHART -->
+          <div
+            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+          >
+            <div
+              class="flex items-center justify-between border-b border-slate-800 pb-2"
+            >
+              <h2
+                class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+              >
+                <i class="fa-solid fa-arrow-trend-up text-pink-500"></i>
+                Derivative Rates ($\dot{V}, \dot{m}, \dot{h}, \dot{n}$)
+              </h2>
+              <span class="text-[10px] text-slate-400 font-mono"
+                >Normalized Units</span
+              >
+            </div>
+            <div class="relative w-full h-56">
+              <canvas id="chart-derivatives"></canvas>
+            </div>
+          </div>
+
+          <!-- ALPHAS & BETAS vs VOLTAGE KINETICS -->
+          <div
+            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+          >
+            <div
+              class="flex items-center justify-between border-b border-slate-800 pb-2"
+            >
+              <h2
+                class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
+              >
+                <i class="fa-solid fa-dna text-amber-500"></i> Gating Kinetics
+                ($\alpha(V), \beta(V)$)
+              </h2>
+              <div class="flex items-center gap-1">
+                <label class="text-[10px] text-slate-400">Parameter:</label>
+                <select
+                  id="select-kinetic-param"
+                  onchange="updateKineticsChart()"
+                  class="bg-slate-900 text-[11px] border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 focus:outline-none focus:border-amber-500"
+                >
+                  <option value="m" selected>m (Na⁺ Opening)</option>
+                  <option value="h">h (Na⁺ Inactivation)</option>
+                  <option value="n">n (K⁺ Opening)</option>
+                </select>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight">
+              Rate constants over the membrane voltage spectrum. The vertical
+              yellow cursor line plots the
+              <strong>current neuron state</strong> dynamically!
+            </p>
+            <div class="relative w-full h-56">
+              <canvas id="chart-kinetics"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- MATHEMATICS EQUATIONS OVERLAY MODAL -->
+    <div
+      id="equation-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative"
+      >
+        <button
+          onclick="closeEquationModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+
+        <div
+          class="flex items-center gap-3 border-b border-slate-800 pb-4 mb-6"
+        >
+          <i
+            class="fa-solid fa-square-root-variable text-2xl text-teal-400"
+          ></i>
+          <h3 class="text-xl font-bold">The Hodgkin-Huxley Model Equations</h3>
+        </div>
+
+        <div class="space-y-6 text-slate-300 text-sm leading-relaxed">
+          <div>
+            <h4 class="font-bold text-white mb-2 text-base">
+              1. Complete Membrane Current Equilibrium
+            </h4>
+            <p class="mb-3">
+              The total membrane potential $V$ of the neuron changes dynamically
+              based on the applied experimental stimulation $I_{app}$ balanced
+              against ionic currents flow:
+            </p>
+            <div
+              class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 my-3 text-center overflow-x-auto text-base text-teal-300"
+            >
+              $$C_m \frac{dV}{dt} = I_{app} - g_{Na} m^3 h (V - E_{Na}) - g_K
+              n^4 (V - E_K) - g_L (V - E_L)$$
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 class="font-bold text-white mb-1.5 text-base">
+                2. Gating Transitions ($n, m, h$)
+              </h4>
+              <p class="mb-2">
+                Each gating variable representing gate opening probability
+                evolves as:
+              </p>
+              <div
+                class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-center font-mono text-xs text-sky-400"
+              >
+                $$\frac{dx}{dt} = \alpha_x(V)(1-x) - \beta_x(V)x$$
+              </div>
+              <p class="mt-2 text-xs text-slate-400">
+                Where $x \in \{m, h, n\}$. It can also be written in terms of
+                steady state $x_\infty(V)$ and activation time constant
+                $\tau_x(V)$:
+              </p>
+              <div
+                class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-center text-xs mt-1 text-sky-300"
+              >
+                $$x_\infty(V) = \frac{\alpha_x}{\alpha_x + \beta_x}, \quad
+                \tau_x(V) = \frac{1}{\alpha_x + \beta_x}$$
+              </div>
+            </div>
+
+            <div>
+              <h4 class="font-bold text-white mb-1.5 text-base">
+                3. Dynamic Gates Conductances
+              </h4>
+              <ul
+                class="space-y-2 text-xs bg-slate-950 p-3 rounded-xl border border-slate-800/80"
+              >
+                <li>
+                  <strong class="text-red-400"
+                    >$m$ (Activation - Sodium):</strong
+                  >
+                  Represents activation of Na+ channel (fast). Term is $m^3$.
+                </li>
+                <li>
+                  <strong class="text-pink-400"
+                    >$h$ (Inactivation - Sodium):</strong
+                  >
+                  Represents inactivation of Na+ channel (slow). Complete Na
+                  gate configuration is $m^3h$.
+                </li>
+                <li>
+                  <strong class="text-blue-400"
+                    >$n$ (Activation - Potassium):</strong
+                  >
+                  Represents activation of K+ channel (slower). Complete K gate
+                  configuration is $n^4$.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="font-bold text-white mb-2 text-base">
+              4. Kinetic Voltage Rates formulas
+            </h4>
+            <p class="mb-3">
+              Transition rates ($\alpha$ and $\beta$) mapped to action potential
+              voltage levels (with resting state at $-65\text{ mV}$):
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div
+                class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-center"
+              >
+                <span class="block font-bold text-slate-300 mb-1"
+                  >Sodium Activation ($m$)</span
+                >
+                $$\alpha_m(V) = \frac{0.1(V+40)}{1 - e^{-(V+40)/10}}$$
+                $$\beta_m(V) = 4 e^{-(V+65)/18}$$
+              </div>
+              <div
+                class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-center"
+              >
+                <span class="block font-bold text-slate-300 mb-1"
+                  >Sodium Inactivation ($h$)</span
+                >
+                $$\alpha_h(V) = 0.07 e^{-(V+65)/20}$$ $$\beta_h(V) = \frac{1}{1
+                + e^{-(V+35)/10}}$$
+              </div>
+              <div
+                class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-center"
+              >
+                <span class="block font-bold text-slate-300 mb-1"
+                  >Potassium Activation ($n$)</span
+                >
+                $$\alpha_n(V) = \frac{0.01(V+55)}{1 - e^{-(V+55)/10}}$$
+                $$\beta_n(V) = 0.125 e^{-(V+65)/80}$$
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-6 pt-4 border-t border-slate-800">
+          <button
+            onclick="closeEquationModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Mathematics Display
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER / CREDITS -->
+    <footer
+      class="mt-auto border-t border-slate-800/80 bg-slate-950/40 py-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between px-6 gap-2"
+    >
+      <p>
+        Interactive Dynamic Biophysical Simulation. Created as a responsive
+        Educational Sandbox tool.
+      </p>
+      <p>&copy; 2026 Gemini Neural Labs. All rights reserved.</p>
+    </footer>
+
+    <script>
+      // Core Gating Variables & State Variables
+      let state = {
+        V: -65.0, // Membrane voltage (mV)
+        m: 0.05, // Sodium activation
+        h: 0.6, // Sodium inactivation
+        n: 0.32, // Potassium activation
+        t: 0.0, // Simulation current elapsed time (ms)
+
+        // Derivatives
+        dVdt: 0.0,
+        dmdt: 0.0,
+        dhdt: 0.0,
+        dndt: 0.0,
+
+        // Channel Constants (Default HH values)
+        Cm: 1.0, // Membrane Capacitance
+        gNa: 120.0, // Max Sodium conductance
+        ENa: 50.0, // Sodium reversal potential
+        gK: 36.0, // Max Potassium conductance
+        EK: -77.0, // Potassium reversal potential
+        gL: 0.3, // Max Leak conductance
+        EL: -54.4, // Leak reversal potential
+
+        // Stimulation params
+        biasCurrent: 0.0,
+        pulseAmp: 15.0,
+        pulseStart: 10.0,
+        pulseWidth: 2.0,
+        manualShockTimer: 0.0, // Used to trigger an instantaneous custom stimulation pulse
+
+        // Execution properties
+        isRunning: true,
+        dt: 0.025,
+        delay: 4,
+        maxHistorySize: 320,
+
+        // UI choices
+        phaseYField: "n",
+        gatesGraphType: "composite", // 'raw' (m, n, h) or 'composite' (n^4, m^3h, m^3)
+      };
+
+      // Arrays to hold historical trajectory records for smooth graphing
+      let timeHistory = [];
+      let vHistory = [];
+      let iHistory = [];
+      let mHistory = [];
+      let nHistory = [];
+      let hHistory = [];
+      let n4History = [];
+      let m3hHistory = [];
+      let m3History = [];
+
+      let dVHistory = [];
+      let dmHistory = [];
+      let dnHistory = [];
+      let dhHistory = [];
+
+      // Reference variables to Chart.js elements
+      let chartVoltage = null;
+      let chartPhase = null;
+      let chartGates = null;
+      let chartDerivatives = null;
+      let chartKinetics = null;
+      let loopTimer = null;
+
+      window.onload = function () {
+        initHistoricalBuffers();
+        createAllCharts();
+        updateSimulationUIState();
+        startSimulationLoop();
+      };
+
+      // Initialize historical data buffers with resting potential
+      function initHistoricalBuffers() {
+        timeHistory = [];
+        vHistory = [];
+        iHistory = [];
+        mHistory = [];
+        nHistory = [];
+        hHistory = [];
+        n4History = [];
+        m3hHistory = [];
+        m3History = [];
+        dVHistory = [];
+        dmHistory = [];
+        dnHistory = [];
+        dhHistory = [];
+
+        state.t = 0.0;
+        state.V = -65.0;
+        state.m = alpha_m(state.V) / (alpha_m(state.V) + beta_m(state.V));
+        state.h = alpha_h(state.V) / (alpha_h(state.V) + beta_h(state.V));
+        state.n = alpha_n(state.V) / (alpha_n(state.V) + beta_n(state.V));
+
+        for (let i = 0; i < state.maxHistorySize; i++) {
+          addHistoryRecord(state.t);
+          state.t += state.dt;
+        }
+      }
+
+      // Add a single evaluation state record to history collections
+      function addHistoryRecord(timeVal) {
+        timeHistory.push(timeVal.toFixed(2));
+        vHistory.push(state.V);
+        iHistory.push(calculateCurrentStimulus(timeVal));
+        mHistory.push(state.m);
+        nHistory.push(state.n);
+        hHistory.push(state.h);
+
+        n4History.push(Math.pow(state.n, 4));
+        m3hHistory.push(Math.pow(state.m, 3) * state.h);
+        m3History.push(Math.pow(state.m, 3));
+
+        dVHistory.push(state.dVdt);
+        dmHistory.push(state.dmdt);
+        dnHistory.push(state.dndt);
+        dhHistory.push(state.dhdt);
+
+        // Shave excess arrays size
+        if (timeHistory.length > state.maxHistorySize) {
+          timeHistory.shift();
+          vHistory.shift();
+          iHistory.shift();
+          mHistory.shift();
+          nHistory.shift();
+          hHistory.shift();
+          n4History.shift();
+          m3hHistory.shift();
+          m3History.shift();
+          dVHistory.shift();
+          dmHistory.shift();
+          dnHistory.shift();
+          dhHistory.shift();
+        }
+      }
+
+      // Hodgkin-Huxley gating equations (m, h, n alphas and betas)
+      function alpha_m(V) {
+        let temp = V + 40.0;
+        if (Math.abs(temp) < 1e-5) return 1.0; // L'Hopital rule adjustment for singular point
+        return (0.1 * temp) / (1.0 - Math.exp(-temp / 10.0));
+      }
+
+      function beta_m(V) {
+        return 4.0 * Math.exp(-(V + 65.0) / 18.0);
+      }
+
+      function alpha_h(V) {
+        return 0.07 * Math.exp(-(V + 65.0) / 20.0);
+      }
+
+      function beta_h(V) {
+        return 1.0 / (1.0 + Math.exp(-(V + 35.0) / 10.0));
+      }
+
+      function alpha_n(V) {
+        let temp = V + 55.0;
+        if (Math.abs(temp) < 1e-5) return 0.1; // L'Hopital rule adjustment for singular point
+        return (0.01 * temp) / (1.0 - Math.exp(-temp / 10.0));
+      }
+
+      function beta_n(V) {
+        return 0.125 * Math.exp(-(V + 65.0) / 80.0);
+      }
+
+      // Active stimulus evaluator
+      function calculateCurrentStimulus(t) {
+        let current = state.biasCurrent;
+
+        // Check continuous scheduled Pulse duration
+        if (t >= state.pulseStart && t <= state.pulseStart + state.pulseWidth) {
+          current += state.pulseAmp;
+        }
+
+        // Add manual click shock excitation timer
+        if (state.manualShockTimer > 0) {
+          current += state.pulseAmp;
+        }
+
+        return current;
+      }
+
+      // Calculate derivatives and perform a single step integration (Euler-Method)
+      function stepIntegration() {
+        let V = state.V;
+        let m = state.m;
+        let h = state.h;
+        let n = state.n;
+
+        // Alphas and Betas
+        let am = alpha_m(V);
+        let bm = beta_m(V);
+        let ah = alpha_h(V);
+        let bh = beta_h(V);
+        let an = alpha_n(V);
+        let bn = beta_n(V);
+
+        // Compute stimulus
+        let I_ion = calculateCurrentStimulus(state.t);
+
+        // Gating differential state equations dx/dt = alpha(1-x) - beta(x)
+        state.dmdt = am * (1.0 - m) - bm * m;
+        state.dhdt = ah * (1.0 - h) - bh * h;
+        state.dndt = an * (1.0 - n) - bn * n;
+
+        // Ionic currents calculations
+        let I_Na = state.gNa * Math.pow(m, 3) * h * (V - state.ENa);
+        let I_K = state.gK * Math.pow(n, 4) * (V - state.EK);
+        let I_L = state.gL * (V - state.EL);
+
+        // Voltage differential equation dV/dt = (I_stim - I_Na - I_K - I_L) / Cm
+        state.dVdt = (I_ion - I_Na - I_K - I_L) / state.Cm;
+
+        // Integration Step using forward Euler approximation
+        state.V += state.dt * state.dVdt;
+        state.m += state.dt * state.dmdt;
+        state.h += state.dt * state.dhdt;
+        state.n += state.dt * state.dndt;
+
+        // Keep gates between logical bounds [0, 1]
+        state.m = Math.max(0.0, Math.min(1.0, state.m));
+        state.h = Math.max(0.0, Math.min(1.0, state.h));
+        state.n = Math.max(0.0, Math.min(1.0, state.n));
+
+        // Decrement manual perturbation step timer if active
+        if (state.manualShockTimer > 0) {
+          state.manualShockTimer -= state.dt;
+        }
+
+        state.t += state.dt;
+      }
+
+      // Construct visual plotting configurations using Chart.js
+      function createAllCharts() {
+        const ctxVoltage = document
+          .getElementById("chart-voltage")
+          .getContext("2d");
+        const ctxPhase = document
+          .getElementById("chart-phase-space")
+          .getContext("2d");
+        const ctxGates = document
+          .getElementById("chart-gates")
+          .getContext("2d");
+        const ctxDerivatives = document
+          .getElementById("chart-derivatives")
+          .getContext("2d");
+        const ctxKinetics = document
+          .getElementById("chart-kinetics")
+          .getContext("2d");
+
+        const gridColor = "rgba(71, 85, 105, 0.15)";
+        const fontStyle = {
+          family: "Inter",
+          size: 10,
+          color: "#94a3b8",
+        };
+
+        // 1. Membrane Potential Voltage vs Time Chart
+        chartVoltage = new Chart(ctxVoltage, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "Voltage (V)",
+                data: vHistory,
+                borderColor: "#2dd4bf",
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                yAxisID: "yV",
+              },
+              {
+                label: "Stimulus (I)",
+                data: iHistory,
+                borderColor: "#f59e0b",
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                pointRadius: 0,
+                fill: false,
+                yAxisID: "yI",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+              yV: {
+                type: "linear",
+                position: "left",
+                min: -90,
+                max: 40,
+                grid: { color: gridColor },
+                ticks: { color: "#2dd4bf", font: fontStyle },
+              },
+              yI: {
+                type: "linear",
+                position: "right",
+                min: -10,
+                max: 80,
+                grid: { drawOnChartArea: false },
+                ticks: { color: "#f59e0b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 2. Interactive Phase Space Scatter Chart
+        chartPhase = new Chart(ctxPhase, {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Trajectory Trail",
+                data: getPhaseSpaceData(),
+                borderColor: "rgba(99, 102, 241, 0.5)",
+                borderWidth: 1.5,
+                showLine: true,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "Current State",
+                data: [{ x: state.V, y: getPhaseSpaceYValue() }],
+                borderColor: "#f59e0b",
+                backgroundColor: "#f59e0b",
+                pointRadius: 6,
+                pointHoverRadius: 8,
+              },
+              {
+                label: "Nullcline n_inf(V)",
+                data: state.phaseYField === "n" ? getNullclineNData() : [],
+                borderColor: "rgba(239, 68, 68, 0.4)",
+                borderWidth: 1.5,
+                borderDash: [2, 2],
+                showLine: true,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            onClick: handlePhaseSpaceClick,
+            scales: {
+              x: {
+                min: -90,
+                max: 40,
+                title: {
+                  display: true,
+                  text: "Membrane Potential V (mV)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+              y: {
+                min: 0.0,
+                max: 1.0,
+                title: {
+                  display: true,
+                  text: `Parameter (${state.phaseYField})`,
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+            },
+          },
+        });
+
+        // 3. Gating parameters Dynamic Graph
+        chartGates = new Chart(ctxGates, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: getGatesChartDatasets(),
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+              y: {
+                min: 0.0,
+                max: 1.0,
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 4. Rate of Derivative changes vs Time
+        chartDerivatives = new Chart(ctxDerivatives, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "dV/dt",
+                data: dVHistory,
+                borderColor: "#ec4899",
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "dm/dt",
+                data: dmHistory,
+                borderColor: "#f43f5e",
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "dh/dt",
+                data: dhHistory,
+                borderColor: "#3b82f6",
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "dn/dt",
+                data: dnHistory,
+                borderColor: "#10b981",
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+              y: {
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 5. Kinetic Alpha / Beta curves vs Voltage
+        let paramSelected = document.getElementById(
+          "select-kinetic-param",
+        ).value;
+        chartKinetics = new Chart(ctxKinetics, {
+          type: "line",
+          data: {
+            labels: getVoltageArrayRange(),
+            datasets: [
+              {
+                label: "Alpha (Opening rate)",
+                data: getKineticCurveData(paramSelected, "alpha"),
+                borderColor: "#10b981",
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "Beta (Closing rate)",
+                data: getKineticCurveData(paramSelected, "beta"),
+                borderColor: "#ef4444",
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "Current V Position",
+                data: [
+                  { x: state.V, y: 0 },
+                  { x: state.V, y: 5 },
+                ], // Dynamic marker bar
+                borderColor: "#f59e0b",
+                borderWidth: 2,
+                borderDash: [4, 4],
+                showLine: true,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                type: "linear",
+                min: -100,
+                max: 50,
+                title: {
+                  display: true,
+                  text: "Voltage (mV)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+              y: {
+                min: 0,
+                max: 6,
+                title: {
+                  display: true,
+                  text: "Rate Constant (/ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+            },
+          },
+        });
+      }
+
+      // Helpers for plotting parameters
+      function getPhaseSpaceData() {
+        let data = [];
+        for (let i = 0; i < vHistory.length; i++) {
+          let yVal = 0.0;
+          switch (state.phaseYField) {
+            case "n":
+              yVal = nHistory[i];
+              break;
+            case "m":
+              yVal = mHistory[i];
+              break;
+            case "h":
+              yVal = hHistory[i];
+              break;
+            case "n4":
+              yVal = n4History[i];
+              break;
+            case "m3h":
+              yVal = m3hHistory[i];
+              break;
+          }
+          data.push({ x: vHistory[i], y: yVal });
+        }
+        return data;
+      }
+
+      function getPhaseSpaceYValue() {
+        switch (state.phaseYField) {
+          case "n":
+            return state.n;
+          case "m":
+            return state.m;
+          case "h":
+            return state.h;
+          case "n4":
+            return Math.pow(state.n, 4);
+          case "m3h":
+            return Math.pow(state.m, 3) * state.h;
+          default:
+            return state.n;
+        }
+      }
+
+      function getNullclineNData() {
+        let data = [];
+        for (let v = -90; v <= 40; v += 1) {
+          let an = alpha_n(v);
+          let bn = beta_n(v);
+          let n_inf = an / (an + bn);
+          data.push({ x: v, y: n_inf });
+        }
+        return data;
+      }
+
+      function getGatesChartDatasets() {
+        if (state.gatesGraphType === "raw") {
+          return [
+            {
+              label: "n (K activation)",
+              data: nHistory,
+              borderColor: "#60a5fa",
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: "m (Na activation)",
+              data: mHistory,
+              borderColor: "#f87171",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: "h (Na inactivation)",
+              data: hHistory,
+              borderColor: "#fb7185",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+            },
+          ];
+        } else {
+          return [
+            {
+              label: "n⁴ (Potassium Gate)",
+              data: n4History,
+              borderColor: "#3b82f6",
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: "m³h (Sodium Gate)",
+              data: m3hHistory,
+              borderColor: "#ef4444",
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: "m³ (Na Activation factor)",
+              data: m3History,
+              borderColor: "#f43f5e",
+              borderWidth: 1,
+              borderDash: [2, 2],
+              pointRadius: 0,
+              fill: false,
+            },
+          ];
+        }
+      }
+
+      function getVoltageArrayRange() {
+        let arr = [];
+        for (let v = -100; v <= 50; v += 2) arr.push(v);
+        return arr;
+      }
+
+      function getKineticCurveData(param, type) {
+        let arr = [];
+        let r = getVoltageArrayRange();
+        for (let i = 0; i < r.length; i++) {
+          let v = r[i];
+          let val = 0.0;
+          if (param === "m") {
+            val = type === "alpha" ? alpha_m(v) : beta_m(v);
+          } else if (param === "h") {
+            val = type === "alpha" ? alpha_h(v) : beta_h(v);
+          } else if (param === "n") {
+            val = type === "alpha" ? alpha_n(v) : beta_n(v);
+          }
+          arr.push({ x: v, y: val });
+        }
+        return arr;
+      }
+
+      // Phase Space Interactive Click Handler
+      function handlePhaseSpaceClick(event) {
+        const points = chartPhase.getElementsAtEventForMode(
+          event,
+          "nearest",
+          { intersect: false },
+          true,
+        );
+
+        // Get click coordinates directly from the Chart Scale
+        const canvasPosition = Chart.helpers.getRelativePosition(
+          event,
+          chartPhase,
+        );
+        const clickX = chartPhase.scales.x.getValueForPixel(canvasPosition.x);
+        const clickY = chartPhase.scales.y.getValueForPixel(canvasPosition.y);
+
+        if (clickX >= -90 && clickX <= 40 && clickY >= 0 && clickY <= 1) {
+          // Instantly clamp Membrane Potential Voltage
+          state.V = clickX;
+
+          // Instantly clamp chosen Gating Variable relative to selection
+          if (state.phaseYField === "n") {
+            state.n = clickY;
+          } else if (state.phaseYField === "m") {
+            state.m = clickY;
+          } else if (state.phaseYField === "h") {
+            state.h = clickY;
+          } else if (state.phaseYField === "n4") {
+            state.n = Math.pow(clickY, 0.25);
+          } else if (state.phaseYField === "m3h") {
+            // Approximate reset
+            state.m = Math.pow(clickY, 1 / 3);
+          }
+
+          // Push dynamic indicator update
+          addHistoryRecord(state.t);
+          refreshCharts();
+        }
+      }
+
+      // Change Phase Space variable mapping
+      function changePhaseSpaceY() {
+        state.phaseYField = document.getElementById("select-phase-y").value;
+
+        // Update labels and nullclines
+        chartPhase.options.scales.y.title.text = `Parameter (${state.phaseYField})`;
+        chartPhase.data.datasets[0].data = getPhaseSpaceData();
+        chartPhase.data.datasets[1].data = [
+          { x: state.V, y: getPhaseSpaceYValue() },
+        ];
+
+        // Draw Nullcline only for pure n activation parameter mapping
+        chartPhase.data.datasets[2].data =
+          state.phaseYField === "n" ? getNullclineNData() : [];
+        chartPhase.update("none");
+      }
+
+      // Switch gates dynamic view between composite formulations or pure gates
+      function toggleGatesGraphType(type) {
+        state.gatesGraphType = type;
+
+        // Modify active button classes styles
+        const btnRaw = document.getElementById("btn-show-gates-raw");
+        const btnComp = document.getElementById("btn-show-gates-composite");
+
+        if (type === "raw") {
+          btnRaw.className =
+            "px-2 py-0.5 text-[10px] rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 transition";
+          btnComp.className =
+            "px-2 py-0.5 text-[10px] rounded bg-slate-800 text-slate-400 border border-transparent transition";
+        } else {
+          btnComp.className =
+            "px-2 py-0.5 text-[10px] rounded bg-teal-500/20 text-teal-300 border border-teal-500/30 transition";
+          btnRaw.className =
+            "px-2 py-0.5 text-[10px] rounded bg-slate-800 text-slate-400 border border-transparent transition";
+        }
+
+        chartGates.data.datasets = getGatesChartDatasets();
+        chartGates.update("none");
+      }
+
+      // Kinetic rates select dropdown change updates
+      function updateKineticsChart() {
+        let paramSelected = document.getElementById(
+          "select-kinetic-param",
+        ).value;
+        chartKinetics.data.datasets[0].data = getKineticCurveData(
+          paramSelected,
+          "alpha",
+        );
+        chartKinetics.data.datasets[1].data = getKineticCurveData(
+          paramSelected,
+          "beta",
+        );
+        chartKinetics.data.datasets[2].data = [
+          { x: state.V, y: 0 },
+          { x: state.V, y: 6 },
+        ];
+        chartKinetics.update("none");
+      }
+
+      // Simulation Core loop cycle mapping
+      function startSimulationLoop() {
+        if (loopTimer) clearInterval(loopTimer);
+        loopTimer = setInterval(() => {
+          if (state.isRunning) {
+            // Perform step integration
+            stepIntegration();
+
+            // Add result to history
+            addHistoryRecord(state.t);
+
+            // Refresh graphs
+            refreshCharts();
+          }
+        }, state.delay);
+      }
+
+      function toggleSimulation() {
+        state.isRunning = !state.isRunning;
+        updateSimulationUIState();
+      }
+
+      function stepSimulation() {
+        stepIntegration();
+        addHistoryRecord(state.t);
+        refreshCharts();
+      }
+
+      function resetSimulation() {
+        initHistoricalBuffers();
+        refreshCharts();
+      }
+
+      function updateSimulationUIState() {
+        const btn = document.getElementById("btn-toggle-sim");
+        const icon = document.getElementById("icon-toggle-sim");
+        const label = document.getElementById("label-toggle-sim");
+        const dot = document.getElementById("sim-status-dot");
+        const statusText = document.getElementById("sim-status-text");
+
+        if (state.isRunning) {
+          btn.className =
+            "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition active:scale-95 shadow-lg shadow-teal-500/10";
+          icon.className = "fa-solid fa-pause text-base";
+          label.innerText = "Pause";
+          dot.className =
+            "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping";
+          statusText.innerText = "Running";
+        } else {
+          btn.className =
+            "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition active:scale-95";
+          icon.className = "fa-solid fa-play text-base";
+          label.innerText = "Resume";
+          dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+          statusText.innerText = "Paused";
+        }
+      }
+
+      function refreshCharts() {
+        document.getElementById("current-time-val").innerText =
+          state.t.toFixed(2);
+        document.getElementById("stim-indicator").innerText =
+          calculateCurrentStimulus(state.t).toFixed(2) + " μA/cm²";
+
+        // 1. Voltage Chart Update
+        chartVoltage.data.labels = timeHistory;
+        chartVoltage.data.datasets[0].data = vHistory;
+        chartVoltage.data.datasets[1].data = iHistory;
+        chartVoltage.update("none");
+
+        // 2. Phase Space Update
+        chartPhase.data.datasets[0].data = getPhaseSpaceData();
+        chartPhase.data.datasets[1].data = [
+          { x: state.V, y: getPhaseSpaceYValue() },
+        ];
+        chartPhase.update("none");
+
+        // 3. Gates Chart Update
+        chartGates.data.labels = timeHistory;
+        chartGates.data.datasets = getGatesChartDatasets();
+        chartGates.update("none");
+
+        // 4. Derivatives Update
+        chartDerivatives.data.labels = timeHistory;
+        chartDerivatives.data.datasets[0].data = dVHistory;
+        chartDerivatives.data.datasets[1].data = dmHistory;
+        chartDerivatives.data.datasets[2].data = dhHistory;
+        chartDerivatives.data.datasets[3].data = dnHistory;
+        chartDerivatives.update("none");
+
+        // 5. Kinetics Current Position cursor
+        chartKinetics.data.datasets[2].data = [
+          { x: state.V, y: 0 },
+          { x: state.V, y: 6 },
+        ];
+        chartKinetics.update("none");
+      }
+
+      // Handle text parameters updates safely
+      function validateAndUpdateParam(inputEl) {
+        let val = parseFloat(inputEl.value);
+        if (isNaN(val)) return;
+
+        if (inputEl.id === "param-dt") {
+          state.dt = Math.max(0.001, Math.min(0.1, val));
+          inputEl.value = state.dt;
+        } else if (inputEl.id === "param-delay") {
+          state.delay = Math.max(1, Math.min(200, val));
+          inputEl.value = state.delay;
+          startSimulationLoop();
+        }
+      }
+
+      // Live slider stimulus values update mapping
+      function updateStimulusParams() {
+        state.biasCurrent = parseFloat(
+          document.getElementById("slider-bias").value,
+        );
+        state.pulseAmp = parseFloat(
+          document.getElementById("slider-pulse-amp").value,
+        );
+        state.pulseStart = parseFloat(
+          document.getElementById("slider-pulse-start").value,
+        );
+        state.pulseWidth = parseFloat(
+          document.getElementById("slider-pulse-width").value,
+        );
+
+        document.getElementById("val-bias").innerText =
+          state.biasCurrent.toFixed(1) + " μA";
+        document.getElementById("val-pulse-amp").innerText =
+          state.pulseAmp.toFixed(1) + " μA";
+        document.getElementById("val-pulse-start").innerText =
+          state.pulseStart.toFixed(1);
+        document.getElementById("val-pulse-width").innerText =
+          state.pulseWidth.toFixed(1);
+      }
+
+      // Live slider channels biophysical mapping
+      function updateBiophysicsParams() {
+        state.Cm = parseFloat(document.getElementById("slider-cm").value);
+        state.gNa = parseFloat(document.getElementById("slider-gna").value);
+        state.ENa = parseFloat(document.getElementById("slider-ena").value);
+        state.gK = parseFloat(document.getElementById("slider-gk").value);
+        state.EK = parseFloat(document.getElementById("slider-ek").value);
+        state.gL = parseFloat(document.getElementById("slider-gl").value);
+        state.EL = parseFloat(document.getElementById("slider-el").value);
+
+        document.getElementById("val-cm").innerText = state.Cm.toFixed(1);
+        document.getElementById("val-gna").innerText = state.gNa.toFixed(1);
+        document.getElementById("val-ena").innerText = state.ENa.toFixed(1);
+        document.getElementById("val-gk").innerText = state.gK.toFixed(1);
+        document.getElementById("val-ek").innerText = state.EK.toFixed(1);
+        document.getElementById("val-gl").innerText = state.gL.toFixed(2);
+        document.getElementById("val-el").innerText = state.EL.toFixed(1);
+      }
+
+      // Reset channels default HH settings
+      function restoreDefaultBiophysics() {
+        document.getElementById("slider-cm").value = 1.0;
+        document.getElementById("slider-gna").value = 120;
+        document.getElementById("slider-ena").value = 50;
+        document.getElementById("slider-gk").value = 36;
+        document.getElementById("slider-ek").value = -77;
+        document.getElementById("slider-gl").value = 0.3;
+        document.getElementById("slider-el").value = -54.4;
+
+        updateBiophysicsParams();
+      }
+
+      // Manual excitation shock deliverer trigger
+      function triggerShock() {
+        // Trigger applied stimulus manual step timer equivalent to current pulse duration
+        state.manualShockTimer = state.pulseWidth;
+      }
+
+      // Presets configuration helper to showcase different neural biological phenomena
+      function loadPreset(presetKey) {
+        resetSimulation();
+        restoreDefaultBiophysics();
+
+        if (presetKey === "single") {
+          // Bias current 0, single sharp pulse amplitude to trigger precise active action potential
+          document.getElementById("slider-bias").value = 0;
+          document.getElementById("slider-pulse-amp").value = 15;
+          document.getElementById("slider-pulse-start").value = 10;
+          document.getElementById("slider-pulse-width").value = 2;
+        } else if (presetKey === "repetitive") {
+          // High constant continuous bias current trigger repetitive self-sustained oscillations
+          document.getElementById("slider-bias").value = 12.0;
+          document.getElementById("slider-pulse-amp").value = 0;
+          document.getElementById("slider-pulse-start").value = 10;
+          document.getElementById("slider-pulse-width").value = 1;
+        } else if (presetKey === "refractory") {
+          // Deliver two close pulses, showing second failure due to inactivation of sodium gate
+          document.getElementById("slider-bias").value = 0;
+          document.getElementById("slider-pulse-amp").value = 18;
+          document.getElementById("slider-pulse-start").value = 5;
+          document.getElementById("slider-pulse-width").value = 15; // wide block to monitor recovery
+        } else if (presetKey === "anodal") {
+          // Negatively hyperpolarize then suddenly shut down bias stimulus triggering rebound action spike
+          document.getElementById("slider-bias").value = 0;
+          document.getElementById("slider-pulse-amp").value = -12; // Negative pulse current
+          document.getElementById("slider-pulse-start").value = 5;
+          document.getElementById("slider-pulse-width").value = 25;
+        }
+
+        updateStimulusParams();
+        state.isRunning = true;
+        updateSimulationUIState();
+      }
+
+      // Equation modal control helpers
+      function openEquationModal() {
+        document.getElementById("equation-modal").classList.remove("hidden");
+        // Trigger MathJax typesetting pass
+        if (window.MathJax) {
+          MathJax.typesetPromise();
+        }
+      }
+
+      function closeEquationModal() {
+        document.getElementById("equation-modal").classList.add("hidden");
+      }
+    </script>
+  </body>
+</html>
