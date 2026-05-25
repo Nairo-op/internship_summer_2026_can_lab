@@ -557,6 +557,13 @@
               >
                 Membrane Potential vs Time
               </h2>
+              <button
+                onclick="openVoltageModal()"
+                class="ml-2 px-2 py-0.5 rounded bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 text-[10px] text-teal-300 font-medium transition"
+                title="Enlarge Membrane Potential"
+              >
+                <i class="fa-solid fa-expand text-[9px]"></i> Expand
+              </button>
             </div>
             <div class="flex items-center gap-4 text-xs font-mono">
               <div class="flex items-center gap-1.5">
@@ -590,20 +597,30 @@
                 Interactive Phase Space
               </h2>
 
-              <!-- Axis mapping controls -->
-              <div class="flex items-center gap-1">
-                <label class="text-[10px] text-slate-400">Y-Axis:</label>
-                <select
-                  id="select-phase-y"
-                  onchange="changePhaseSpaceY()"
-                  class="bg-slate-900 text-xs border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 focus:outline-none focus:border-teal-500"
+              <div class="flex items-center gap-2">
+                <!-- Axis mapping controls -->
+                <div class="flex items-center gap-1">
+                  <label class="text-[10px] text-slate-400">Y-Axis:</label>
+                  <select
+                    id="select-phase-y"
+                    onchange="changePhaseSpaceY()"
+                    class="bg-slate-900 text-xs border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 focus:outline-none focus:border-teal-500"
+                  >
+                    <option value="n" selected>n (K activation)</option>
+                    <option value="m">m (Na activation)</option>
+                    <option value="h">h (Na inactivation)</option>
+                    <option value="n4">n⁴ (Potassium Gate)</option>
+                    <option value="m3h">m³h (Sodium Gate)</option>
+                  </select>
+                </div>
+                <!-- Enlarge Button -->
+                <button
+                  onclick="openPhaseSpaceModal()"
+                  class="flex items-center gap-1 px-2 py-0.5 rounded bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 text-[10px] text-teal-300 font-medium transition"
+                  title="Enlarge Phase Space View"
                 >
-                  <option value="n" selected>n (K activation)</option>
-                  <option value="m">m (Na activation)</option>
-                  <option value="h">h (Na inactivation)</option>
-                  <option value="n4">n⁴ (Potassium Gate)</option>
-                  <option value="m3h">m³h (Sodium Gate)</option>
-                </select>
+                  <i class="fa-solid fa-expand text-[9px]"></i> Expand
+                </button>
               </div>
             </div>
 
@@ -660,23 +677,89 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- RATE OF CHANGES CHART -->
           <div
-            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-3"
+            class="bg-slate-950/60 border border-slate-800/60 rounded-2xl p-5 backdrop-blur-md flex flex-col gap-4"
           >
             <div
-              class="flex items-center justify-between border-b border-slate-800 pb-2"
+              class="border-b border-slate-800 pb-2 flex items-center justify-between"
             >
               <h2
                 class="font-bold text-sm tracking-wider uppercase text-slate-300 flex items-center gap-2"
               >
-                <i class="fa-solid fa-arrow-trend-up text-pink-500"></i>
-                Derivative Rates ($\dot{V}, \dot{m}, \dot{h}, \dot{n}$)
+                <i class="fa-solid fa-arrow-trend-up text-pink-500"></i> Rate of
+                Changes (Derivatives)
               </h2>
               <span class="text-[10px] text-slate-400 font-mono"
-                >Normalized Units</span
+                >Separated Scales</span
               >
             </div>
-            <div class="relative w-full h-56">
-              <canvas id="chart-derivatives"></canvas>
+
+            <div class="flex flex-col gap-4">
+              <!-- Sub-chart 1: Voltage Derivative (dV/dt) -->
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <span class="text-xs font-semibold text-pink-400"
+                    >Membrane Potential Rate: $dV/dt$ (mV/ms)</span
+                  >
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-mono text-pink-500"
+                      ><span id="val-dvdt-latest">0.00</span> mV/ms</span
+                    >
+                    <button
+                      onclick="openDvdtModal()"
+                      class="text-teal-400 hover:text-teal-300 transition"
+                      title="Expand dV/dt Workspace"
+                    >
+                      <i class="fa-solid fa-expand text-[10px]"></i>
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="relative w-full h-24 bg-slate-900/30 rounded-xl p-1 border border-slate-800/50"
+                >
+                  <canvas id="chart-dv-derivative"></canvas>
+                </div>
+              </div>
+
+              <!-- Sub-chart 2: Gating Derivatives (dm/dt, dh/dt, dn/dt) -->
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-teal-400"
+                      >Gating Variables Rates: $dm/dt, dh/dt, dn/dt$ (/ms)</span
+                    >
+                  </div>
+                  <div class="flex gap-3 text-[10px] font-mono items-center">
+                    <span class="text-red-400"
+                      >m': <span id="val-dmdt-latest">0.00</span>
+                      <button
+                        onclick="openDmdtModal()"
+                        class="ml-1 text-red-400 hover:text-red-300 transition"
+                        title="Expand dm/dt (Fast Sodium Gate)"
+                      >
+                        <i class="fa-solid fa-expand text-[9px]"></i>
+                      </button>
+                    </span>
+                    <span class="text-blue-400"
+                      >n': <span id="val-dndt-latest">0.00</span></span
+                    >
+                    <span class="text-pink-400"
+                      >h': <span id="val-dhdt-latest">0.00</span>
+                      <button
+                        onclick="openNhModal()"
+                        class="ml-1 text-pink-400 hover:text-pink-300 transition"
+                        title="Expand dn/dt & dh/dt (Slow Gates)"
+                      >
+                        <i class="fa-solid fa-expand text-[9px]"></i>
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <div
+                  class="relative w-full h-28 bg-slate-900/30 rounded-xl p-1 border border-slate-800/50"
+                >
+                  <canvas id="chart-gate-derivatives"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -870,6 +953,274 @@
       </div>
     </div>
 
+    <!-- ENLARGED MEMBRANE POTENTIAL VOLTAGE MODAL -->
+    <div
+      id="voltage-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative flex flex-col gap-4"
+      >
+        <button
+          onclick="closeVoltageModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <div
+            class="p-2 bg-teal-500/10 rounded-xl border border-teal-500/20 text-teal-400"
+          >
+            <i class="fa-solid fa-wave-square text-2xl animate-pulse"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold">
+              Enlarged Membrane Potential Workspace
+            </h3>
+            <p class="text-xs text-slate-400">
+              High-resolution tracking of membrane voltage $V(t)$ oscillations
+              in response to applied current stimulus over time
+            </p>
+          </div>
+        </div>
+        <div
+          class="relative w-full h-[450px] bg-slate-950/80 rounded-2xl p-4 border border-slate-800"
+        >
+          <canvas id="chart-modal-voltage"></canvas>
+        </div>
+        <div class="flex justify-end pt-2 border-t border-slate-800">
+          <button
+            onclick="closeVoltageModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Workspace
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENLARGED DVDT MODAL -->
+    <div
+      id="dvdt-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative flex flex-col gap-4"
+      >
+        <button
+          onclick="closeDvdtModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <div
+            class="p-2 bg-pink-500/10 rounded-xl border border-pink-500/20 text-pink-400"
+          >
+            <i class="fa-solid fa-arrow-trend-up text-2xl animate-pulse"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold">
+              Enlarged Membrane Potential Derivative ($dV/dt$)
+            </h3>
+            <p class="text-xs text-slate-400">
+              High-resolution trajectory tracking velocity and transient
+              directions of action potential transitions
+            </p>
+          </div>
+        </div>
+        <div
+          class="relative w-full h-[450px] bg-slate-950/80 rounded-2xl p-4 border border-slate-800"
+        >
+          <canvas id="chart-modal-dvdt"></canvas>
+        </div>
+        <div class="flex justify-end pt-2 border-t border-slate-800">
+          <button
+            onclick="closeDvdtModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Workspace
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENLARGED DM/DT MODAL (highly skewed sodium activation speed) -->
+    <div
+      id="dmdt-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative flex flex-col gap-4"
+      >
+        <button
+          onclick="closeDmdtModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <div
+            class="p-2 bg-red-500/10 rounded-xl border border-red-500/20 text-red-400"
+          >
+            <i class="fa-solid fa-bolt text-2xl animate-pulse"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold">
+              Fast Sodium Gate Derivative Workspace ($dm/dt$)
+            </h3>
+            <p class="text-xs text-slate-400">
+              Sodium activation $m$ triggers exceptionally fast (highly skewed
+              scale) dynamic responses, requiring isolated graphing
+            </p>
+          </div>
+        </div>
+        <div
+          class="relative w-full h-[450px] bg-slate-950/80 rounded-2xl p-4 border border-slate-800"
+        >
+          <canvas id="chart-modal-dmdt-only"></canvas>
+        </div>
+        <div class="flex justify-end pt-2 border-t border-slate-800">
+          <button
+            onclick="closeDmdtModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Workspace
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENLARGED DN/DT & DH/DT MODAL -->
+    <div
+      id="nh-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative flex flex-col gap-4"
+      >
+        <button
+          onclick="closeNhModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <div
+            class="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400"
+          >
+            <i class="fa-solid fa-chart-line text-2xl animate-pulse"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold">
+              Slow Channels Kinetics Derivatives ($dn/dt$ & $dh/dt$)
+            </h3>
+            <p class="text-xs text-slate-400">
+              Slower dynamic gates governing channel recovery and potassium
+              efflux dynamics plotted at standard analytical scale
+            </p>
+          </div>
+        </div>
+        <div
+          class="relative w-full h-[450px] bg-slate-950/80 rounded-2xl p-4 border border-slate-800"
+        >
+          <canvas id="chart-modal-nh-only"></canvas>
+        </div>
+        <div class="flex justify-end pt-2 border-t border-slate-800">
+          <button
+            onclick="closeNhModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Workspace
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENLARGED PHASE SPACE MODAL -->
+    <div
+      id="phase-space-modal"
+      class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative flex flex-col gap-4"
+      >
+        <button
+          onclick="closePhaseSpaceModal()"
+          class="absolute top-4 right-4 text-slate-400 hover:text-white transition bg-slate-800 p-2 rounded-lg"
+        >
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+
+        <div
+          class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 text-indigo-400"
+            >
+              <i class="fa-solid fa-circle-nodes text-2xl animate-pulse"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-bold">Enlarged Phase Space Workspace</h3>
+              <p class="text-xs text-slate-400">
+                High-resolution interactive phase space trajectory plot with
+                live nullcline overlay and interactive clamping
+              </p>
+            </div>
+          </div>
+
+          <!-- Axis mapping controls -->
+          <div
+            class="flex items-center gap-2 bg-slate-950/40 px-4 py-2 rounded-xl border border-slate-800"
+          >
+            <label class="text-xs text-slate-400 font-semibold"
+              >Select Y-Axis Parameter:</label
+            >
+            <select
+              id="modal-select-phase-y"
+              onchange="changePhaseSpaceY(true)"
+              class="bg-slate-900 text-xs border border-slate-700 rounded px-1.5 py-1 text-slate-300 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="n" selected>n (K activation)</option>
+              <option value="m">m (Na activation)</option>
+              <option value="h">h (Na inactivation)</option>
+              <option value="n4">n⁴ (Potassium Gate)</option>
+              <option value="m3h">m³h (Sodium Gate)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Large Plot Area -->
+        <div
+          class="relative w-full h-[450px] bg-slate-950/80 rounded-2xl p-4 border border-slate-800"
+        >
+          <canvas id="chart-modal-phase-space"></canvas>
+        </div>
+
+        <div
+          class="text-xs text-slate-400 leading-relaxed italic bg-slate-950/20 p-3 rounded-lg border border-slate-800/40 flex items-center gap-2"
+        >
+          <i class="fa-solid fa-circle-info text-indigo-400 text-sm"></i>
+          <span
+            ><strong>Phase Space Interaction:</strong> You can click directly
+            inside this enlarged chart canvas to clamp the current state vectors
+            instantly! This lets you perturb the cell at arbitrary points to
+            find excitability thresholds and trace limit cycles.</span
+          >
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-slate-800">
+          <button
+            onclick="closePhaseSpaceModal()"
+            class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold transition text-sm"
+          >
+            Close Phase Space
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- FOOTER / CREDITS -->
     <footer
       class="mt-auto border-t border-slate-800/80 bg-slate-950/40 py-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between px-6 gap-2"
@@ -878,7 +1229,7 @@
         Interactive Dynamic Biophysical Simulation. Created as a responsive
         Educational Sandbox tool.
       </p>
-      <p>&copy; 2026 Gemini Neural Labs. All rights reserved.</p>
+      <p>&copy; 2026 Ajnas. All rights reserved.</p>
     </footer>
 
     <script>
@@ -921,6 +1272,11 @@
         // UI choices
         phaseYField: "n",
         gatesGraphType: "composite", // 'raw' (m, n, h) or 'composite' (n^4, m^3h, m^3)
+        modalVoltageOpen: false,
+        modalDvdtOpen: false,
+        modalDmdtOpen: false,
+        modalNhOpen: false,
+        modalPhaseOpen: false, // Track state of phase space overlay
       };
 
       // Arrays to hold historical trajectory records for smooth graphing
@@ -943,7 +1299,13 @@
       let chartVoltage = null;
       let chartPhase = null;
       let chartGates = null;
-      let chartDerivatives = null;
+      let chartDvDerivative = null;
+      let chartGateDerivatives = null;
+      let chartModalVoltage = null; // Enlarged Voltage Trajectory
+      let chartModalDvdt = null; // Enlarged Membrane Potential Derivative
+      let chartModalDmdtOnly = null; // Enlarged Fast Sodium Derivative
+      let chartModalNhOnly = null; // Enlarged Slow Kinetics Derivatives
+      let chartModalPhaseSpace = null; // Expanded Phase space chart reference
       let chartKinetics = null;
       let loopTimer = null;
 
@@ -1125,8 +1487,11 @@
         const ctxGates = document
           .getElementById("chart-gates")
           .getContext("2d");
-        const ctxDerivatives = document
-          .getElementById("chart-derivatives")
+        const ctxDvDerivative = document
+          .getElementById("chart-dv-derivative")
+          .getContext("2d");
+        const ctxGateDerivatives = document
+          .getElementById("chart-gate-derivatives")
           .getContext("2d");
         const ctxKinetics = document
           .getElementById("chart-kinetics")
@@ -1235,7 +1600,7 @@
             maintainAspectRatio: false,
             animation: false,
             plugins: { legend: { display: false } },
-            onClick: handlePhaseSpaceClick,
+            onClick: (e) => handlePhaseSpaceClick(e, chartPhase),
             scales: {
               x: {
                 min: -90,
@@ -1292,8 +1657,8 @@
           },
         });
 
-        // 4. Rate of Derivative changes vs Time
-        chartDerivatives = new Chart(ctxDerivatives, {
+        // 4a. Membrane Potential Derivative (dV/dt) vs Time
+        chartDvDerivative = new Chart(ctxDvDerivative, {
           type: "line",
           data: {
             labels: timeHistory,
@@ -1306,27 +1671,50 @@
                 pointRadius: 0,
                 fill: false,
               },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: gridColor }, ticks: { display: false } },
+              y: {
+                grid: { color: gridColor },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 4b. Gating Variable Derivatives (dm/dt, dh/dt, dn/dt) vs Time
+        chartGateDerivatives = new Chart(ctxGateDerivatives, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
               {
                 label: "dm/dt",
                 data: dmHistory,
-                borderColor: "#f43f5e",
-                borderWidth: 1,
-                pointRadius: 0,
-                fill: false,
-              },
-              {
-                label: "dh/dt",
-                data: dhHistory,
-                borderColor: "#3b82f6",
-                borderWidth: 1,
+                borderColor: "#f87171",
+                borderWidth: 1.2,
                 pointRadius: 0,
                 fill: false,
               },
               {
                 label: "dn/dt",
                 data: dnHistory,
-                borderColor: "#10b981",
-                borderWidth: 1,
+                borderColor: "#60a5fa",
+                borderWidth: 1.2,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "dh/dt",
+                data: dhHistory,
+                borderColor: "#fb7185",
+                borderWidth: 1.2,
                 pointRadius: 0,
                 fill: false,
               },
@@ -1343,6 +1731,8 @@
                 ticks: { color: "#64748b", font: fontStyle },
               },
               y: {
+                min: -1.2,
+                max: 1.2,
                 grid: { color: gridColor },
                 ticks: { color: "#64748b", font: fontStyle },
               },
@@ -1415,6 +1805,313 @@
                 title: {
                   display: true,
                   text: "Rate Constant (/ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+            },
+          },
+        });
+
+        // 6. Expanded Modal - Membrane Potential (V & I)
+        const ctxModalVoltage = document
+          .getElementById("chart-modal-voltage")
+          .getContext("2d");
+        chartModalVoltage = new Chart(ctxModalVoltage, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "Voltage (V)",
+                data: vHistory,
+                borderColor: "#2dd4bf",
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+                yAxisID: "yV",
+              },
+              {
+                label: "Stimulus (I)",
+                data: iHistory,
+                borderColor: "#f59e0b",
+                borderWidth: 1.5,
+                borderDash: [4, 4],
+                pointRadius: 0,
+                fill: false,
+                yAxisID: "yI",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: { display: true, labels: { color: "#94a3b8" } },
+            },
+            scales: {
+              x: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+              yV: {
+                type: "linear",
+                position: "left",
+                min: -90,
+                max: 40,
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#2dd4bf", font: fontStyle },
+              },
+              yI: {
+                type: "linear",
+                position: "right",
+                min: -10,
+                max: 80,
+                grid: { drawOnChartArea: false },
+                ticks: { color: "#f59e0b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 7. Expanded Modal - Membrane Potential Derivative (dV/dt)
+        const ctxModalDvdt = document
+          .getElementById("chart-modal-dvdt")
+          .getContext("2d");
+        chartModalDvdt = new Chart(ctxModalDvdt, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "dV/dt (Membrane Potential Speed)",
+                data: dVHistory,
+                borderColor: "#ec4899",
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: { display: true, labels: { color: "#94a3b8" } },
+            },
+            scales: {
+              x: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+              y: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+              },
+            },
+          },
+        });
+
+        // 8. Expanded Modal - Fast Gating Derivative (dm/dt) Chart
+        const ctxModalDmdtOnly = document
+          .getElementById("chart-modal-dmdt-only")
+          .getContext("2d");
+        chartModalDmdtOnly = new Chart(ctxModalDmdtOnly, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "dm/dt (Sodium Activation Rate)",
+                data: dmHistory,
+                borderColor: "#f87171",
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+                title: {
+                  display: true,
+                  text: "Time (ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+              },
+              y: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+                title: {
+                  display: true,
+                  text: "Rate Constant (/ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+              },
+            },
+          },
+        });
+
+        // 9. Expanded Modal - Slower Gating Derivatives (dn/dt & dh/dt) Chart
+        const ctxModalNhOnly = document
+          .getElementById("chart-modal-nh-only")
+          .getContext("2d");
+        chartModalNhOnly = new Chart(ctxModalNhOnly, {
+          type: "line",
+          data: {
+            labels: timeHistory,
+            datasets: [
+              {
+                label: "dn/dt (Potassium Activation Rate)",
+                data: dnHistory,
+                borderColor: "#60a5fa",
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "dh/dt (Sodium Inactivation Rate)",
+                data: dhHistory,
+                borderColor: "#fb7185",
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+                title: {
+                  display: true,
+                  text: "Time (ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+              },
+              y: {
+                min: -0.25,
+                max: 0.25,
+                grid: { color: "rgba(71, 85, 105, 0.1)" },
+                ticks: { color: "#64748b", font: fontStyle },
+                title: {
+                  display: true,
+                  text: "Rate Constant (/ms)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+              },
+            },
+          },
+        });
+
+        // 10. Expanded Phase Space Chart
+        const ctxModalPhase = document
+          .getElementById("chart-modal-phase-space")
+          .getContext("2d");
+        chartModalPhaseSpace = new Chart(ctxModalPhase, {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Trajectory Trail",
+                data: getPhaseSpaceData(),
+                borderColor: "rgba(99, 102, 241, 0.6)",
+                borderWidth: 2,
+                showLine: true,
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "Current State",
+                data: [{ x: state.V, y: getPhaseSpaceYValue() }],
+                borderColor: "#f59e0b",
+                backgroundColor: "#f59e0b",
+                pointRadius: 8,
+                pointHoverRadius: 10,
+              },
+              {
+                label: "Nullcline n_inf(V)",
+                data: state.phaseYField === "n" ? getNullclineNData() : [],
+                borderColor: "rgba(239, 68, 68, 0.4)",
+                borderWidth: 2,
+                borderDash: [2, 2],
+                showLine: true,
+                pointRadius: 0,
+                fill: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: {
+                display: true,
+                labels: {
+                  color: "#94a3b8",
+                  font: { family: "Inter", size: 11 },
+                },
+              },
+            },
+            onClick: (e) => handlePhaseSpaceClick(e, chartModalPhaseSpace),
+            scales: {
+              x: {
+                min: -90,
+                max: 40,
+                title: {
+                  display: true,
+                  text: "Membrane Potential V (mV)",
+                  color: "#94a3b8",
+                  font: fontStyle,
+                },
+                grid: { color: gridColor },
+                ticks: { color: "#64748b" },
+              },
+              y: {
+                min: 0.0,
+                max: 1.0,
+                title: {
+                  display: true,
+                  text: `Parameter (${state.phaseYField})`,
                   color: "#94a3b8",
                   font: fontStyle,
                 },
@@ -1564,22 +2261,15 @@
         return arr;
       }
 
-      // Phase Space Interactive Click Handler
-      function handlePhaseSpaceClick(event) {
-        const points = chartPhase.getElementsAtEventForMode(
-          event,
-          "nearest",
-          { intersect: false },
-          true,
-        );
-
-        // Get click coordinates directly from the Chart Scale
+      // Phase Space Interactive Click Handler (Targets either primary or modal instance)
+      function handlePhaseSpaceClick(event, activeChartInstance) {
+        const chartObj = activeChartInstance || chartPhase;
         const canvasPosition = Chart.helpers.getRelativePosition(
           event,
-          chartPhase,
+          chartObj,
         );
-        const clickX = chartPhase.scales.x.getValueForPixel(canvasPosition.x);
-        const clickY = chartPhase.scales.y.getValueForPixel(canvasPosition.y);
+        const clickX = chartObj.scales.x.getValueForPixel(canvasPosition.x);
+        const clickY = chartObj.scales.y.getValueForPixel(canvasPosition.y);
 
         if (clickX >= -90 && clickX <= 40 && clickY >= 0 && clickY <= 1) {
           // Instantly clamp Membrane Potential Voltage
@@ -1606,20 +2296,37 @@
       }
 
       // Change Phase Space variable mapping
-      function changePhaseSpaceY() {
-        state.phaseYField = document.getElementById("select-phase-y").value;
+      function changePhaseSpaceY(isFromModal = false) {
+        const val = isFromModal
+          ? document.getElementById("modal-select-phase-y").value
+          : document.getElementById("select-phase-y").value;
 
-        // Update labels and nullclines
+        // Synchronize selections
+        document.getElementById("select-phase-y").value = val;
+        document.getElementById("modal-select-phase-y").value = val;
+        state.phaseYField = val;
+
+        // Update primary labels and nullclines
         chartPhase.options.scales.y.title.text = `Parameter (${state.phaseYField})`;
         chartPhase.data.datasets[0].data = getPhaseSpaceData();
         chartPhase.data.datasets[1].data = [
           { x: state.V, y: getPhaseSpaceYValue() },
         ];
-
-        // Draw Nullcline only for pure n activation parameter mapping
         chartPhase.data.datasets[2].data =
           state.phaseYField === "n" ? getNullclineNData() : [];
         chartPhase.update("none");
+
+        // Update modal labels and nullclines if modal is initialized
+        if (chartModalPhaseSpace) {
+          chartModalPhaseSpace.options.scales.y.title.text = `Parameter (${state.phaseYField})`;
+          chartModalPhaseSpace.data.datasets[0].data = getPhaseSpaceData();
+          chartModalPhaseSpace.data.datasets[1].data = [
+            { x: state.V, y: getPhaseSpaceYValue() },
+          ];
+          chartModalPhaseSpace.data.datasets[2].data =
+            state.phaseYField === "n" ? getNullclineNData() : [];
+          chartModalPhaseSpace.update("none");
+        }
       }
 
       // Switch gates dynamic view between composite formulations or pure gates
@@ -1748,13 +2455,64 @@
         chartGates.data.datasets = getGatesChartDatasets();
         chartGates.update("none");
 
-        // 4. Derivatives Update
-        chartDerivatives.data.labels = timeHistory;
-        chartDerivatives.data.datasets[0].data = dVHistory;
-        chartDerivatives.data.datasets[1].data = dmHistory;
-        chartDerivatives.data.datasets[2].data = dhHistory;
-        chartDerivatives.data.datasets[3].data = dnHistory;
-        chartDerivatives.update("none");
+        // 4. Split Derivatives Update
+        chartDvDerivative.data.labels = timeHistory;
+        chartDvDerivative.data.datasets[0].data = dVHistory;
+        chartDvDerivative.update("none");
+
+        chartGateDerivatives.data.labels = timeHistory;
+        chartGateDerivatives.data.datasets[0].data = dmHistory;
+        chartGateDerivatives.data.datasets[1].data = dnHistory;
+        chartGateDerivatives.data.datasets[2].data = dhHistory;
+        chartGateDerivatives.update("none");
+
+        // 4c. Modal Expanded Charts Update
+        if (state.modalVoltageOpen && chartModalVoltage) {
+          chartModalVoltage.data.labels = timeHistory;
+          chartModalVoltage.data.datasets[0].data = vHistory;
+          chartModalVoltage.data.datasets[1].data = iHistory;
+          chartModalVoltage.update("none");
+        }
+
+        if (state.modalDvdtOpen && chartModalDvdt) {
+          chartModalDvdt.data.labels = timeHistory;
+          chartModalDvdt.data.datasets[0].data = dVHistory;
+          chartModalDvdt.update("none");
+        }
+
+        if (state.modalDmdtOpen && chartModalDmdtOnly) {
+          chartModalDmdtOnly.data.labels = timeHistory;
+          chartModalDmdtOnly.data.datasets[0].data = dmHistory;
+          chartModalDmdtOnly.update("none");
+        }
+
+        if (state.modalNhOpen && chartModalNhOnly) {
+          chartModalNhOnly.data.labels = timeHistory;
+          chartModalNhOnly.data.datasets[0].data = dnHistory;
+          chartModalNhOnly.data.datasets[1].data = dhHistory;
+          chartModalNhOnly.update("none");
+        }
+
+        // Modal Expanded Phase Space Chart Update
+        if (chartModalPhaseSpace) {
+          chartModalPhaseSpace.data.datasets[0].data = getPhaseSpaceData();
+          chartModalPhaseSpace.data.datasets[1].data = [
+            { x: state.V, y: getPhaseSpaceYValue() },
+          ];
+          chartModalPhaseSpace.data.datasets[2].data =
+            state.phaseYField === "n" ? getNullclineNData() : [];
+          chartModalPhaseSpace.update("none");
+        }
+
+        // Update live readouts
+        document.getElementById("val-dvdt-latest").innerText =
+          state.dVdt.toFixed(2);
+        document.getElementById("val-dmdt-latest").innerText =
+          state.dmdt.toFixed(3);
+        document.getElementById("val-dndt-latest").innerText =
+          state.dndt.toFixed(3);
+        document.getElementById("val-dhdt-latest").innerText =
+          state.dhdt.toFixed(3);
 
         // 5. Kinetics Current Position cursor
         chartKinetics.data.datasets[2].data = [
@@ -1876,6 +2634,79 @@
         updateStimulusParams();
         state.isRunning = true;
         updateSimulationUIState();
+      }
+
+      // Gating Derivatives Dedicated Modals Controls
+      function openVoltageModal() {
+        state.modalVoltageOpen = true;
+        document.getElementById("voltage-modal").classList.remove("hidden");
+        if (chartModalVoltage) {
+          chartModalVoltage.resize();
+          chartModalVoltage.update();
+        }
+      }
+
+      function closeVoltageModal() {
+        state.modalVoltageOpen = false;
+        document.getElementById("voltage-modal").classList.add("hidden");
+      }
+
+      function openDvdtModal() {
+        state.modalDvdtOpen = true;
+        document.getElementById("dvdt-modal").classList.remove("hidden");
+        if (chartModalDvdt) {
+          chartModalDvdt.resize();
+          chartModalDvdt.update();
+        }
+      }
+
+      function closeDvdtModal() {
+        state.modalDvdtOpen = false;
+        document.getElementById("dvdt-modal").classList.add("hidden");
+      }
+
+      function openDmdtModal() {
+        state.modalDmdtOpen = true;
+        document.getElementById("dmdt-modal").classList.remove("hidden");
+        if (chartModalDmdtOnly) {
+          chartModalDmdtOnly.resize();
+          chartModalDmdtOnly.update();
+        }
+      }
+
+      function closeDmdtModal() {
+        state.modalDmdtOpen = false;
+        document.getElementById("dmdt-modal").classList.add("hidden");
+      }
+
+      function openNhModal() {
+        state.modalNhOpen = true;
+        document.getElementById("nh-modal").classList.remove("hidden");
+        if (chartModalNhOnly) {
+          chartModalNhOnly.resize();
+          chartModalNhOnly.update();
+        }
+      }
+
+      function closeNhModal() {
+        state.modalNhOpen = false;
+        document.getElementById("nh-modal").classList.add("hidden");
+      }
+
+      // Expanded Phase Space Modal Controls
+      function openPhaseSpaceModal() {
+        state.modalPhaseOpen = true;
+        document.getElementById("phase-space-modal").classList.remove("hidden");
+        // Force sizing recalculation on reveal
+        if (chartModalPhaseSpace) {
+          chartModalPhaseSpace.resize();
+          chartModalPhaseSpace.update();
+        }
+      }
+
+      function closePhaseSpaceModal() {
+        state.modalPhaseOpen = false;
+        document.getElementById("phase-space-modal").classList.add("hidden");
       }
 
       // Equation modal control helpers
